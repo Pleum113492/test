@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUT Fleet Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&family=Orbitron:wght@400;700;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="main.css">
+    <script src="mainfunc.js"></script>
+</head>
+
+<body>
+
+    <!-- ==================== LOGIN PAGE ==================== -->
+    <div id="loginPage">
+        <div class="grid-bg"></div>
+        <div class="login-card">
+            <div class="login-logo">
+                <div class="brand">SUT Garbage truck</div>
+                <div class="sub">ระบบจัดการรถเก็บขยะ</div>
+                <div class="sut-badge">มหาวิทยาลัยเทคโนโลยีสุรนารี</div>
+            </div>
+
+            <div class="role-select">
+                <button class="role-btn active" id="roleManager" onclick="selectRole('manager')">
+                    <span class="icon">👔</span>
+                    <span>Manager</span>
+                </button>
+                <button class="role-btn" id="roleDriver" onclick="selectRole('driver')">
+                    <span class="icon">🚗</span>
+                    <span>Driver</span>
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label>ชื่อผู้ใช้</label>
+                <input type="text" id="username" placeholder="กรอกชื่อผู้ใช้" autocomplete="off" />
+            </div>
+            <div class="form-group">
+                <label>รหัสผ่าน</label>
+                <input type="password" id="password" placeholder="กรอกรหัสผ่าน"
+                    onkeydown="if(event.key==='Enter')login()" />
+            </div>
+            <button class="login-btn" onclick="login()">เข้าสู่ระบบ</button>
+            <div class="error-msg" id="errorMsg">❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+            <div style="margin-top:16px; font-size:12px; color:var(--muted); text-align:center;">
+                ทดสอบ: manager/1234 หรือ driver1/1234
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== DRIVER PAGE ==================== -->
+    <div id="driverPage" style="display:none; flex-direction:column;">
+        <div class="top-bar">
+            <div class="brand-sm">SUT FLEET</div>
+            <div class="user-info">
+                <div class="user-avatar">🚗</div>
+                <span id="driverName">คนขับ</span>
+                <button class="logout-btn" onclick="logout()">ออกจากระบบ</button>
+            </div>
+        </div>
+
+        <div class="driver-content">
+            <!-- Car Selection -->
+            <div id="carSelectSection">
+                <div class="section-title">เลือกยานพาหนะ</div>
+                <div class="car-grid" id="carGrid"></div>
+            </div>
+
+            <!-- Route Info -->
+            <div class="route-info">
+                <div class="section-title">เส้นทางการเดินทาง</div>
+                <div class="waypoints">
+                    <div class="waypoint">
+                        <div>
+                            <div class="wp-dot start"></div>
+                            <div class="wp-line"></div>
+                        </div>
+                        <div class="wp-text">
+                            <div class="wp-label">จุดที่ 1 - จุดเริ่มต้น</div>
+                            <div class="wp-name">📚 เรียนรวม 1</div>
+                        </div>
+                    </div>
+                    <div class="waypoint">
+                        <div>
+                            <div class="wp-dot mid"></div>
+                            <div class="wp-line"></div>
+                        </div>
+                        <div class="wp-text">
+                            <div class="wp-label">จุดที่ 2</div>
+                            <div class="wp-name">🏢 อาคารสุรพัฒน์ 2</div>
+                        </div>
+                    </div>
+                    <div class="waypoint">
+                        <div>
+                            <div class="wp-dot end"></div>
+                        </div>
+                        <div class="wp-text">
+                            <div class="wp-label">จุดสิ้นสุด</div>
+                            <div class="wp-name">🏥 โรงพยาบาล มทส</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Button -->
+            <button class="start-btn" id="startBtn" onclick="startNavigation()" disabled>
+                🚀 เริ่มการเดินทาง
+            </button>
+
+            <!-- Navigation Status Bar -->
+            <div class="nav-status-bar" id="navStatusBar">
+                <div class="nav-stat">
+                    <div class="nav-stat-label">ความเร็ว</div>
+                    <div class="nav-stat-value" id="speedVal">0</div>
+                </div>
+                <div class="nav-divider"></div>
+                <div class="nav-stat">
+                    <div class="nav-stat-label">ระยะทาง</div>
+                    <div class="nav-stat-value" id="distVal">0.0</div>
+                </div>
+                <div class="nav-divider"></div>
+                <div class="current-dest">
+                    <div class="current-dest-label">🧭 มุ่งหน้าไปยัง</div>
+                    <div class="current-dest-name" id="currentDestName">—</div>
+                </div>
+            </div>
+
+            <!-- Map -->
+            <div id="navMap"></div>
+        </div>
+    </div>
+
+    <!-- ==================== MANAGER PAGE ==================== -->
+    <div id="managerPage" style="display:none; flex-direction:column;">
+        <div class="top-bar">
+            <div class="brand-sm">SUT FLEET <span style="color:var(--muted);font-size:13px;font-family:'Sarabun';">—
+                    แดชบอร์ดผู้จัดการ</span></div>
+            <div class="user-info">
+                <div class="live-stats" style="display:flex;gap:16px;">
+                    <div style="font-size:13px; color:var(--muted);">รถทั้งหมด: <span
+                            style="color:var(--primary);font-weight:700;">4</span></div>
+                    <div style="font-size:13px; color:var(--muted);">กำลังวิ่ง: <span
+                            style="color:var(--success);font-weight:700;" id="activeCount">0</span></div>
+                </div>
+                <div class="user-avatar">👔</div>
+                <span id="managerName">ผู้จัดการ</span>
+                <button class="logout-btn" onclick="logout()">ออกจากระบบ</button>
+            </div>
+        </div>
+
+        <div class="manager-content">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div>
+                    <div class="sidebar-header">📊 รายละเอียดยานพาหนะ</div>
+                    <div class="sidebar-sub">เลือกรถเพื่อดูข้อมูล</div>
+                </div>
+
+                <select class="vehicle-dropdown" id="vehicleDropdown" onchange="showVehicleDetail()">
+                    <option value="">— เลือกยานพาหนะ —</option>
+                    <option value="0">🚐 รถตู้ กข-001 (คนขับ A)</option>
+                    <option value="1">🚐 รถตู้ กข-002 (คนขับ B)</option>
+                    <option value="2">🚙 รถเก๋ง กข-003 (คนขับ C)</option>
+                    <option value="3">🚙 รถเก๋ง กข-004 (ว่าง)</option>
+                </select>
+
+                <div class="vehicle-detail-card" id="vehicleDetailCard" style="display:none;">
+                    <div class="detail-header">
+                        <div class="detail-car-icon" id="detailIcon">🚐</div>
+                        <div>
+                            <div class="detail-car-name" id="detailName">รถตู้ กข-001</div>
+                            <div class="detail-car-plate" id="detailPlate">กข-001 นครราชสีมา</div>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <span class="key">คนขับ</span>
+                        <span class="val" id="detailDriver">—</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="key">สถานะ</span>
+                        <span class="val" id="detailStatus">—</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="key">ระยะเวลาเดินทางรวม</span>
+                        <span class="val" id="detailTotalTime">—</span>
+                    </div>
+                    <div style="margin-top:14px;">
+                        <div class="section-title">เวลาจอดแต่ละจุด</div>
+                        <div class="stop-timeline" id="stopTimeline"></div>
+                    </div>
+                </div>
+
+                <!-- Live summary stats -->
+                <div style="margin-top:auto;">
+                    <div class="section-title">ภาพรวมระบบ</div>
+                    <div class="live-stats">
+                        <div class="stat-card">
+                            <div class="s-label">กำลังวิ่ง</div>
+                            <div class="s-value" id="movingCount">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="s-label">จอดอยู่</div>
+                            <div class="s-value" id="stoppedCount">4</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map -->
+            <div id="managerMap"></div>
+        </div>
+    </div>
+
+
+</body>
+
+</html>
