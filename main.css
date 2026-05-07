@@ -198,6 +198,55 @@ body {
     z-index: 1;
 }
 
+/* History map — ทับตำแหน่งเดียวกัน แต่ซ่อน/แสดงสลับกัน */
+#historyMap {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* แถบบอก mode แผนที่ */
+#mapModeBar {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 800;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(10,15,30,0.88);
+    border: 1px solid rgba(0,201,167,0.35);
+    border-radius: 30px;
+    padding: 6px 16px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    white-space: nowrap;
+}
+#mapModeLabel {
+    font-size: 13px;
+    font-weight: 700;
+    color: #e8eef8;
+    font-family: 'Sarabun', sans-serif;
+}
+#backToRealtimeBtn {
+    background: rgba(0,201,167,0.15);
+    border: 1px solid rgba(0,201,167,0.4);
+    color: #00c9a7;
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Sarabun', sans-serif;
+    transition: all 0.2s;
+}
+#backToRealtimeBtn:hover {
+    background: rgba(0,201,167,0.3);
+}
+
 /* ========== HAMBURGER BUTTON ========== */
 .drawer-open-btn {
     width: 40px;
@@ -418,6 +467,141 @@ body {
 .stat-card { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px; }
 .stat-card .s-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 .stat-card .s-value { font-size: 26px; font-weight: 700; color: var(--primary); font-family: 'Orbitron', sans-serif; margin-top: 4px; }
+
+/* ===== DAY PICKER ===== */
+.day-picker { margin: 10px 0 4px; }
+.day-picker-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 8px; }
+.day-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.day-chip {
+    background: var(--dark3);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--muted);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-family: 'Sarabun', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.day-chip:hover { border-color: var(--primary); color: var(--primary); }
+.day-chip.active {
+    background: rgba(0,201,167,0.15);
+    border-color: var(--primary);
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* ===== SHOW ROUTE BUTTON ===== */
+.show-route-btn {
+    width: 100%;
+    margin: 10px 0;
+    padding: 10px;
+    background: rgba(0,201,167,0.12);
+    border: 1px solid rgba(0,201,167,0.35);
+    color: var(--primary);
+    border-radius: 10px;
+    font-family: 'Sarabun', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+}
+.show-route-btn:hover {
+    background: rgba(0,201,167,0.25);
+    box-shadow: 0 0 12px rgba(0,201,167,0.25);
+}
+
+/* ===== MISSED STOP ALERT ===== */
+.missed-alert {
+    background: rgba(255,68,68,0.08);
+    border: 1px solid rgba(255,68,68,0.35);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+}
+.missed-alert-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: #ff7777;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+.missed-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,68,68,0.1);
+}
+.missed-item:last-child { border-bottom: none; }
+.missed-icon { font-size: 20px; flex-shrink: 0; }
+.missed-info { flex: 1; }
+.missed-name { font-size: 13px; font-weight: 700; color: #ffaaaa; }
+.missed-coord { font-size: 10px; color: var(--muted); font-family: 'Orbitron', sans-serif; margin-top: 2px; }
+.missed-badge {
+    background: rgba(255,68,68,0.2);
+    color: #ff7777;
+    border: 1px solid rgba(255,68,68,0.4);
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+}
+
+/* ===== BACKUP LOG ===== */
+.backup-log {
+    background: var(--dark3);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 6px;
+}
+.backup-empty {
+    padding: 16px;
+    text-align: center;
+    color: var(--success);
+    font-size: 13px;
+    font-weight: 600;
+}
+.backup-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 12px;
+}
+.backup-row:last-child { border-bottom: none; }
+.backup-date {
+    font-size: 11px;
+    color: var(--muted);
+    width: 52px;
+    flex-shrink: 0;
+    font-weight: 600;
+}
+.backup-stop {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.backup-stop span:first-child { font-weight: 700; font-size: 13px; }
+.backup-coord { font-size: 10px; color: var(--muted); font-family: 'Orbitron', sans-serif; }
+.backup-tag {
+    background: rgba(255,68,68,0.15);
+    color: #ff7777;
+    border: 1px solid rgba(255,68,68,0.3);
+    border-radius: 5px;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 7px;
+    letter-spacing: 0.8px;
+    flex-shrink: 0;
+}
 
 /* ===== RESPONSIVE ===== */
 @media (max-width: 1024px) {
