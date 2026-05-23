@@ -1,1202 +1,1485 @@
 <!DOCTYPE html>
 <html lang="th">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SUT Fleet Management</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&family=Orbitron:wght@400;700;900&display=swap"
-        rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>SUT Fleet — ระบบจัดการรถเก็บขยะ</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+/* ==============================
+   DESIGN TOKENS
+============================== */
+:root{
+  --bg:#060c1a;
+  --bg2:#0c1526;
+  --bg3:#111d35;
+  --card:#141f38;
+  --card2:#192645;
+  --border:rgba(255,255,255,.07);
+  --border2:rgba(0,201,167,.25);
+  --text:#dde8f5;
+  --muted:#6b82a8;
+  --primary:#00c9a7;
+  --primary-dim:rgba(0,201,167,.12);
+  --v1:#00c9a7;
+  --v2:#ff7043;
+  --v1-dim:rgba(0,201,167,.15);
+  --v2-dim:rgba(255,112,67,.15);
+  --gold:#f5c842;
+  --red:#ff4d6d;
+  --green:#00e676;
+  --side-w:360px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--primary);border-radius:2px;}
 
-    <!-- ✅ Leaflet CSS (แทน Google Maps) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+/* ==============================
+   UTILITY
+============================== */
+.hidden{display:none!important;}
+.mono{font-family:'Space Mono',monospace;}
+.text-primary{color:var(--primary);}
+.text-muted{color:var(--muted);}
+.text-v1{color:var(--v1);}
+.text-v2{color:var(--v2);}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.pill.v1{background:var(--v1-dim);color:var(--v1);border:1px solid rgba(0,201,167,.3);}
+.pill.v2{background:var(--v2-dim);color:var(--v2);border:1px solid rgba(255,112,67,.3);}
+.pill.gold{background:rgba(245,200,66,.12);color:var(--gold);border:1px solid rgba(245,200,66,.3);}
+.pill.red{background:rgba(255,77,109,.12);color:var(--red);border:1px solid rgba(255,77,109,.3);}
+.pill.green{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.25);}
 
-    <link rel="stylesheet" href="main.css">
+/* ==============================
+   LEAFLET OVERRIDES
+============================== */
+.leaflet-popup-content-wrapper{background:var(--card2);color:var(--text);border:1px solid var(--border2);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.6);}
+.leaflet-popup-tip{background:var(--card2);}
+.leaflet-popup-content{margin:14px 16px;font-family:'Sarabun',sans-serif;font-size:13px;}
+.leaflet-control-attribution{background:rgba(6,12,26,.8)!important;color:var(--muted)!important;font-size:9px!important;}
+.leaflet-control-attribution a{color:var(--primary)!important;}
+.leaflet-tile-pane{filter:brightness(.52) saturate(.35) hue-rotate(182deg) invert(1) sepia(.25);}
+.leaflet-top,.leaflet-bottom{z-index:10!important;}
+.leaflet-control-zoom a{background:var(--card2)!important;color:var(--text)!important;border-color:var(--border)!important;}
+.leaflet-control-zoom a:hover{background:var(--card)!important;color:var(--primary)!important;}
+@keyframes ripple{0%{transform:scale(1);opacity:.8}100%{transform:scale(3);opacity:0}}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-    <style>
-        /* ปรับ Leaflet popup ให้เข้ากับ dark theme */
-        .leaflet-popup-content-wrapper {
-            background: #1a2540;
-            color: #e8eef8;
-            border: 1px solid rgba(0,201,167,0.3);
-            border-radius: 10px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-        }
-        .leaflet-popup-tip {
-            background: #1a2540;
-        }
-        .leaflet-popup-content {
-            margin: 12px 14px;
-            font-family: 'Sarabun', sans-serif;
-        }
-        /* ซ่อน Leaflet attribution ตรง bottom */
-        .leaflet-control-attribution {
-            background: rgba(10,15,30,0.7) !important;
-            color: #8899bb !important;
-            font-size: 10px !important;
-        }
-        .leaflet-control-attribution a { color: #00c9a7 !important; }
-        /* Dark tile filter */
-        .leaflet-tile-pane {
-            filter: brightness(0.55) saturate(0.4) hue-rotate(180deg) invert(1) sepia(0.3);
-        }
-        /* pulse animation สำหรับรถที่กำลังวิ่ง */
-        @keyframes pulse2 {
-            0%   { transform: scale(1);   opacity: 0.8; }
-            70%  { transform: scale(2.2); opacity: 0.2; }
-            100% { transform: scale(2.5); opacity: 0;   }
-        }
-        .vehicle-marker-wrap { position: relative; }
-        .vehicle-marker-wrap .status-dot {
-            position: absolute;
-            top: -4px; right: -4px;
-            width: 10px; height: 10px;
-            border-radius: 50%;
-            border: 2px solid white;
-        }
-        .status-dot.moving { animation: pulse2 1.5s infinite; }
+/* ==============================
+   LOGIN
+============================== */
+#loginPage{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);position:relative;overflow:hidden;
+}
+#loginPage::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 60% at 20% 50%,rgba(0,201,167,.09) 0%,transparent 70%),
+             radial-gradient(ellipse 50% 50% at 85% 25%,rgba(255,112,67,.07) 0%,transparent 65%);
+}
+.login-grid{
+  position:absolute;inset:0;opacity:.4;
+  background-image:linear-gradient(rgba(0,201,167,.04) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(0,201,167,.04) 1px,transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse 70% 70% at 50% 50%,black,transparent);
+}
+.login-wrap{
+  position:relative;z-index:1;
+  background:var(--card);
+  border:1px solid var(--border2);
+  border-radius:24px;
+  padding:52px 44px;
+  width:min(440px,95vw);
+  box-shadow:0 0 80px rgba(0,201,167,.08),0 40px 100px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06);
+  animation:fadein .5s ease;
+}
+.login-logo{text-align:center;margin-bottom:36px;}
+.login-logo .wordmark{
+  font-family:'Space Mono',monospace;font-size:22px;font-weight:700;
+  color:var(--primary);letter-spacing:4px;
+  text-shadow:0 0 30px rgba(0,201,167,.4);
+}
+.login-logo .sub{font-size:14px;color:var(--muted);margin-top:6px;letter-spacing:.5px;}
+.login-logo .badge{
+  display:inline-block;margin-top:10px;
+  background:linear-gradient(135deg,#1e40af,#2563eb);
+  color:#fff;font-size:10px;font-weight:700;letter-spacing:1.5px;
+  padding:4px 12px;border-radius:20px;
+}
+.role-tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:28px;}
+.role-tab{
+  padding:16px 12px;border:1.5px solid var(--border);border-radius:14px;
+  background:var(--bg3);color:var(--muted);cursor:pointer;
+  font-family:'Sarabun',sans-serif;font-size:14px;font-weight:600;
+  transition:all .25s;display:flex;flex-direction:column;align-items:center;gap:7px;
+}
+.role-tab .tab-icon{font-size:26px;}
+.role-tab.active{border-color:var(--primary);color:var(--primary);background:var(--primary-dim);box-shadow:0 0 20px rgba(0,201,167,.1);}
+.role-tab:hover:not(.active){border-color:rgba(255,255,255,.15);color:var(--text);}
+.fgroup{margin-bottom:18px;}
+.fgroup label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;}
+.fgroup input{
+  width:100%;padding:14px 16px;background:var(--bg3);
+  border:1.5px solid var(--border);border-radius:12px;
+  color:var(--text);font-family:'Sarabun',sans-serif;font-size:15px;
+  transition:border-color .25s;
+}
+.fgroup input:focus{outline:none;border-color:var(--primary);}
+.login-btn{
+  width:100%;padding:16px;margin-top:4px;
+  background:linear-gradient(135deg,var(--primary),#009e83);
+  border:none;border-radius:14px;color:#021912;
+  font-family:'Sarabun',sans-serif;font-size:16px;font-weight:800;
+  cursor:pointer;transition:all .3s;letter-spacing:.5px;
+}
+.login-btn:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,201,167,.35);}
+.login-btn:active{transform:translateY(0);}
+.err-msg{display:none;color:var(--red);font-size:13px;text-align:center;
+  margin-top:12px;padding:10px;background:rgba(255,77,109,.08);border-radius:10px;border:1px solid rgba(255,77,109,.2);}
+.login-hint{margin-top:18px;text-align:center;font-size:11px;color:var(--muted);}
 
-        /* Leaflet controls อยู่เหนือ sidebar backdrop */
-        .leaflet-top, .leaflet-bottom { z-index: 2 !important; }
-    </style>
+/* ==============================
+   APP SHELL
+============================== */
+.app-shell{display:none;flex-direction:column;height:100vh;}
+.app-shell.visible{display:flex;}
+
+/* TOP BAR */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px;height:58px;flex-shrink:0;
+  background:var(--bg2);border-bottom:1px solid var(--border);
+  position:relative;z-index:50;
+}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.topbar-brand{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--primary);letter-spacing:2px;}
+.topbar-sub{font-size:12px;color:var(--muted);}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#008a73);
+  display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.username-label{font-size:13px;font-weight:600;color:var(--text);}
+.btn-logout{
+  padding:6px 14px;background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25);
+  color:var(--red);border-radius:8px;cursor:pointer;
+  font-family:'Sarabun',sans-serif;font-size:12px;font-weight:700;transition:all .2s;
+}
+.btn-logout:hover{background:rgba(255,77,109,.2);}
+.btn-menu{
+  background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;
+  padding:7px;display:flex;flex-direction:column;gap:4.5px;transition:border-color .2s;
+}
+.btn-menu:hover{border-color:var(--primary);}
+.menu-line{width:18px;height:1.5px;background:var(--text);border-radius:1px;transition:background .2s;}
+.btn-menu:hover .menu-line{background:var(--primary);}
+
+/* ==============================
+   DRIVER LAYOUT
+============================== */
+.driver-body{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px;}
+
+.section-label{font-size:10px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1.8px;margin-bottom:8px;}
+
+.car-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.car-card{
+  background:var(--card);border:1.5px solid var(--border);border-radius:14px;
+  padding:16px 12px;text-align:center;cursor:pointer;transition:all .25s;
+}
+.car-card:hover:not(.locked){border-color:rgba(255,255,255,.2);transform:translateY(-2px);}
+.car-card.selected{border-color:var(--primary);background:var(--primary-dim);box-shadow:0 0 20px rgba(0,201,167,.15);}
+.car-card.locked{opacity:.45;cursor:not-allowed;}
+.car-icon{font-size:30px;margin-bottom:8px;}
+.car-name{font-size:12px;font-weight:700;margin-bottom:4px;}
+.car-plate{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:6px;}
+
+.info-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;}
+.info-card .ic-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.info-card .ic-row:last-child{border-bottom:none;}
+.info-card .ic-key{color:var(--muted);}
+.info-card .ic-val{font-weight:700;}
+
+.btn-start{
+  padding:16px;background:linear-gradient(135deg,var(--primary),#009e83);
+  border:none;border-radius:14px;color:#021912;
+  font-family:'Sarabun',sans-serif;font-size:16px;font-weight:800;
+  cursor:pointer;transition:all .3s;
+}
+.btn-start:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important;}
+.btn-start:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,201,167,.35);}
+
+.nav-bar{
+  display:none;background:var(--card);border:1px solid var(--border2);
+  border-radius:14px;padding:14px 16px;
+  align-items:center;gap:14px;flex-wrap:wrap;
+}
+.nav-stat{flex:1;min-width:70px;text-align:center;}
+.nav-stat-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.nav-stat-val{font-size:22px;font-weight:700;color:var(--primary);font-family:'Space Mono',monospace;margin-top:2px;}
+.nav-divider{width:1px;height:36px;background:var(--border);}
+.nav-dest{flex:2;min-width:120px;}
+.nav-dest-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.nav-dest-val{font-size:13px;font-weight:700;margin-top:3px;line-height:1.3;}
+
+/* navMap — fullscreen after startNav */
+#navMap{
+  display:none;
+  position:fixed;inset:0;
+  z-index:200;
+}
+.ors-loading{
+  position:absolute;inset:0;background:rgba(6,12,26,.88);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  z-index:999;
+}
+.spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;}
+.ors-loading p{font-size:13px;color:var(--muted);}
+
+/* HUD overlay — floats on top of fullscreen map */
+#navHUD{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;z-index:300;
+  padding:12px 14px 20px;
+  background:linear-gradient(to top,rgba(6,12,26,.95) 70%,transparent 100%);
+}
+.nav-bar{
+  background:rgba(20,31,56,.92);border:1px solid var(--border2);
+  border-radius:16px;padding:14px 16px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  backdrop-filter:blur(12px);
+  box-shadow:0 -4px 30px rgba(0,0,0,.4);
+}
+.nav-stat{flex:1;min-width:70px;text-align:center;}
+.nav-stat-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.nav-stat-val{font-size:22px;font-weight:700;color:var(--primary);font-family:'Space Mono',monospace;margin-top:2px;}
+.nav-divider{width:1px;height:36px;background:var(--border);}
+.nav-dest{flex:2;min-width:120px;}
+.nav-dest-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.nav-dest-val{font-size:13px;font-weight:700;margin-top:3px;line-height:1.3;}
+
+/* ORS info chip — top-left overlay on map */
+#orsChip{
+  display:none;
+  position:fixed;top:68px;left:14px;z-index:300;
+  background:rgba(6,12,26,.9);border:1px solid var(--border2);
+  border-radius:12px;padding:9px 14px;
+  backdrop-filter:blur(10px);
+  font-size:12px;max-width:calc(100vw - 28px);
+}
+/* Back button — top-right on map */
+#btnExitNav{
+  display:none;
+  position:fixed;top:68px;right:14px;z-index:300;
+  background:rgba(6,12,26,.9);border:1px solid rgba(255,77,109,.35);
+  color:var(--red);border-radius:10px;padding:8px 14px;
+  font-family:'Sarabun',sans-serif;font-size:12px;font-weight:700;
+  cursor:pointer;backdrop-filter:blur(10px);transition:all .2s;
+}
+#btnExitNav:hover{background:rgba(255,77,109,.15);}
+@media(max-width:600px){
+  .nav-stat-val{font-size:18px;}
+  .nav-dest-val{font-size:12px;}
+}
+
+/* ==============================
+   MANAGER LAYOUT
+============================== */
+.manager-body{flex:1;position:relative;overflow:hidden;}
+#managerMap,#historyMap{position:absolute;inset:0;z-index:1;}
+#historyMap{display:none;}
+
+/* MAP MODE PILL */
+.map-mode-bar{
+  position:absolute;top:12px;left:50%;transform:translateX(-50%);
+  z-index:800;display:flex;align-items:center;gap:10px;
+  background:rgba(6,12,26,.9);border:1px solid var(--border2);
+  border-radius:30px;padding:7px 18px;
+  backdrop-filter:blur(12px);box-shadow:0 4px 24px rgba(0,0,0,.5);
+  white-space:nowrap;max-width:calc(100vw - 32px);
+}
+.map-mode-label{font-size:12px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;}
+.btn-back-rt{
+  background:var(--primary-dim);border:1px solid rgba(0,201,167,.35);
+  color:var(--primary);border-radius:20px;padding:4px 14px;
+  font-size:11px;font-weight:700;cursor:pointer;
+  font-family:'Sarabun',sans-serif;transition:all .2s;display:none;white-space:nowrap;
+}
+.btn-back-rt:hover{background:rgba(0,201,167,.25);}
+
+/* REAL-TIME VEHICLE TRACKERS (HUD) */
+.rt-hud{
+  position:absolute;bottom:16px;right:16px;z-index:800;
+  display:flex;flex-direction:column;gap:8px;
+  pointer-events:none;
+}
+.rt-card{
+  background:rgba(6,12,26,.88);border-radius:12px;
+  padding:10px 14px;border-left:3px solid var(--v1);
+  backdrop-filter:blur(10px);min-width:190px;
+  pointer-events:auto;
+}
+.rt-card.v2{border-left-color:var(--v2);}
+.rt-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;}
+.rt-plate{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--v1);}
+.rt-card.v2 .rt-plate{color:var(--v2);}
+.rt-status{font-size:10px;display:flex;align-items:center;gap:4px;}
+.rt-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+.rt-stop{font-size:11px;color:var(--text);line-height:1.3;}
+.rt-meta{font-size:10px;color:var(--muted);margin-top:3px;}
+.rt-progress-bar{width:100%;height:3px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden;}
+.rt-progress-fill{height:100%;background:var(--v1);border-radius:2px;transition:width .5s ease;}
+.rt-card.v2 .rt-progress-fill{background:var(--v2);}
+
+/* SIDEBAR / DRAWER */
+.backdrop{position:absolute;inset:0;background:transparent;z-index:900;pointer-events:none;transition:background .3s;}
+.backdrop.on{background:rgba(0,0,0,.6);pointer-events:auto;}
+.sidebar{
+  position:absolute;left:0;top:0;height:100%;width:var(--side-w);
+  background:var(--bg2);border-right:1px solid var(--border);
+  padding:0 0 24px;overflow:hidden;
+  display:flex;flex-direction:column;z-index:1000;
+  transform:translateX(-105%);
+  transition:transform .3s cubic-bezier(.4,0,.2,1),box-shadow .3s;
+}
+.sidebar.open{transform:translateX(0);box-shadow:16px 0 60px rgba(0,0,0,.8);}
+.sidebar-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 20px 14px;border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.sidebar-title{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--primary);letter-spacing:1px;}
+.btn-close{background:none;border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:14px;transition:all .2s;}
+.btn-close:hover{border-color:var(--red);color:var(--red);}
+.tab-nav{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.tab-btn{
+  flex:1;padding:12px 6px;background:none;border:none;
+  border-bottom:2px solid transparent;
+  color:var(--muted);cursor:pointer;font-family:'Sarabun',sans-serif;
+  font-size:12px;font-weight:700;transition:all .2s;
+}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);}
+.tab-btn:hover:not(.active){color:var(--text);}
+.tab-body{flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px;}
+.tab-panel{display:none;}
+.tab-panel.active{display:flex;flex-direction:column;gap:12px;}
+
+/* Sidebar components */
+.sdrop{
+  width:100%;padding:10px 12px;background:var(--bg3);
+  border:1px solid var(--border);border-radius:10px;
+  color:var(--text);font-family:'Sarabun',sans-serif;font-size:13px;cursor:pointer;
+}
+.sdrop:focus{outline:none;border-color:var(--primary);}
+
+.dist-box{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;}
+.dist-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;}
+.dist-total{
+  border-top:1px solid var(--border);margin-top:6px;padding-top:8px;
+  display:flex;justify-content:space-between;align-items:center;
+}
+.dist-total-val{font-size:16px;font-weight:700;color:var(--primary);font-family:'Space Mono',monospace;}
+
+.warn-box{background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.25);border-radius:10px;padding:12px;}
+.warn-title{font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.warn-item{font-size:11px;color:#f5d97a;padding:3px 0;display:flex;gap:6px;}
+
+.legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:3px 0;}
+.l-line{width:22px;height:3px;border-radius:2px;flex-shrink:0;}
+.l-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+/* stat grid */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.stat-tile{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;}
+.st-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
+.st-val{font-size:22px;font-weight:700;color:var(--primary);font-family:'Space Mono',monospace;margin-top:4px;}
+
+/* day chips */
+.day-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.day-chip{
+  background:var(--bg3);border:1px solid var(--border);color:var(--muted);
+  border-radius:20px;padding:5px 12px;font-size:12px;font-family:'Sarabun',sans-serif;
+  cursor:pointer;transition:all .2s;
+}
+.day-chip.active{background:var(--primary-dim);border-color:rgba(0,201,167,.4);color:var(--primary);font-weight:700;}
+
+/* history detail */
+.hist-header{background:var(--bg3);border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px;margin-bottom:2px;}
+.hist-stop-list{display:flex;flex-direction:column;gap:0;}
+.hist-stop{display:flex;gap:10px;align-items:flex-start;}
+.hs-dot-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+.hs-dot{width:10px;height:10px;border-radius:50%;}
+.hs-line{width:1.5px;height:20px;background:var(--border);}
+.hs-content{padding-bottom:12px;}
+.hs-name{font-size:12px;font-weight:700;line-height:1.3;}
+.hs-meta{font-size:10px;color:var(--muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:8px;}
+
+.btn-show-route{
+  width:100%;padding:9px;background:var(--primary-dim);border:1px solid rgba(0,201,167,.3);
+  color:var(--primary);border-radius:10px;font-family:'Sarabun',sans-serif;font-size:12px;
+  font-weight:700;cursor:pointer;transition:all .2s;
+}
+.btn-show-route:hover{background:rgba(0,201,167,.22);}
+
+.missed-box{background:rgba(255,77,109,.07);border:1px solid rgba(255,77,109,.25);border-radius:10px;padding:12px;}
+.missed-title{font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.missed-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,77,109,.08);}
+.missed-item:last-child{border-bottom:none;}
+.missed-name{font-size:12px;font-weight:700;color:#ff9aaa;flex:1;}
+.missed-coord{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:2px;}
+.missed-tag{background:rgba(255,77,109,.15);color:var(--red);border:1px solid rgba(255,77,109,.3);border-radius:5px;font-size:9px;font-weight:700;padding:2px 7px;letter-spacing:.5px;white-space:nowrap;}
+
+.backup-log{background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.backup-empty{padding:14px;text-align:center;color:var(--green);font-size:12px;font-weight:600;}
+.bk-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:11px;}
+.bk-row:last-child{border-bottom:none;}
+.bk-date{color:var(--muted);width:50px;flex-shrink:0;font-weight:600;}
+.bk-stop{flex:1;display:flex;flex-direction:column;gap:1px;}
+.bk-stop b{font-size:12px;}
+.bk-coord{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;}
+.bk-tag{background:rgba(255,77,109,.12);color:var(--red);border:1px solid rgba(255,77,109,.25);border-radius:4px;font-size:8px;font-weight:700;padding:2px 6px;letter-spacing:.5px;flex-shrink:0;}
+
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
+.sum-tile{background:var(--bg3);border-radius:8px;padding:9px;text-align:center;}
+.sum-ico{font-size:16px;}
+.sum-val{font-size:13px;font-weight:700;color:var(--primary);font-family:'Space Mono',monospace;margin-top:2px;}
+.sum-lbl{font-size:9px;color:var(--muted);margin-top:1px;}
+
+/* route detail list */
+.crit-list{display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto;}
+.crit-item{
+  display:flex;align-items:center;gap:8px;padding:7px 10px;
+  background:rgba(245,200,66,.05);border:1px solid rgba(245,200,66,.1);
+  border-radius:7px;font-size:11px;
+}
+.crit-num{color:var(--gold);font-weight:700;min-width:20px;font-family:'Space Mono',monospace;}
+.crit-name{flex:1;line-height:1.3;}
+.crit-coord{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;white-space:nowrap;}
+
+/* ORS status */
+.ors-status{display:flex;align-items:center;gap:6px;font-size:11px;padding:8px 12px;border-radius:8px;background:var(--bg3);}
+
+/* MOBILE */
+@media(max-width:600px){
+  :root{--side-w:min(320px,92vw);}
+  .topbar{padding:0 12px;height:52px;}
+  .topbar-brand{font-size:11px;}
+  .username-label,.topbar-sub{display:none;}
+  .driver-body{padding:12px;}
+  .car-grid{grid-template-columns:repeat(2,1fr);}
+  #navMap{height:42vh;}
+  .nav-stat-val{font-size:18px;}
+  .rt-hud{bottom:10px;right:10px;}
+  .rt-card{min-width:160px;}
+  .map-mode-bar{top:8px;padding:5px 14px;}
+}
+</style>
 </head>
-
 <body>
 
-    <!-- ==================== LOGIN PAGE ==================== -->
-    <div id="loginPage">
-        <div class="grid-bg"></div>
-        <div class="login-card">
-            <div class="login-logo">
-                <div class="brand">SUT Garbage truck</div>
-                <div class="sub">ระบบจัดการรถเก็บขยะ</div>
-                <div class="sut-badge">มหาวิทยาลัยเทคโนโลยีสุรนารี</div>
-            </div>
+<!-- ===== LOGIN ===== -->
+<div id="loginPage">
+  <div class="login-grid"></div>
+  <div class="login-wrap">
+    <div class="login-logo">
+      <div class="wordmark">SUT FLEET</div>
+      <div class="sub">ระบบจัดการรถเก็บขยะ มทส.</div>
+      <div class="badge">SURANAREE UNIVERSITY OF TECHNOLOGY</div>
+    </div>
+    <div class="role-tabs">
+      <button class="role-tab active" id="roleManager" onclick="selectRole('manager')"><span class="tab-icon">👔</span><span>Manager</span></button>
+      <button class="role-tab" id="roleDriver" onclick="selectRole('driver')"><span class="tab-icon">🚛</span><span>Driver</span></button>
+    </div>
+    <div class="fgroup"><label>ชื่อผู้ใช้</label><input type="text" id="username" placeholder="กรอกชื่อผู้ใช้" autocomplete="off"/></div>
+    <div class="fgroup"><label>รหัสผ่าน</label><input type="password" id="password" placeholder="กรอกรหัสผ่าน" onkeydown="if(event.key==='Enter')login()"/></div>
+    <button class="login-btn" onclick="login()">เข้าสู่ระบบ</button>
+    <div class="err-msg" id="errMsg">❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+    <div class="login-hint">manager/1234 &nbsp;·&nbsp; driver1/1234 &nbsp;·&nbsp; driver2/1234</div>
+  </div>
+</div>
 
-            <div class="role-select">
-                <button class="role-btn active" id="roleManager" onclick="selectRole('manager')">
-                    <span class="icon">👔</span>
-                    <span>Manager</span>
-                </button>
-                <button class="role-btn" id="roleDriver" onclick="selectRole('driver')">
-                    <span class="icon">🚗</span>
-                    <span>Driver</span>
-                </button>
-            </div>
+<!-- ===== DRIVER APP ===== -->
+<div id="driverApp" class="app-shell">
+  <div class="topbar" id="driverTopbar">
+    <div class="topbar-left">
+      <div class="topbar-brand">SUT FLEET</div>
+      <div class="topbar-sub">คนขับ</div>
+    </div>
+    <div class="topbar-right">
+      <div class="avatar">🚛</div>
+      <span class="username-label" id="driverLabel">—</span>
+      <button class="btn-logout" onclick="logout()">ออก</button>
+    </div>
+  </div>
+  <div class="driver-body" id="driverBody">
+    <div id="carSection">
+      <div class="section-label">เลือกยานพาหนะของคุณ</div>
+      <div class="car-grid" id="carGrid"></div>
+    </div>
+    <div id="routeSection" class="hidden">
+      <div class="section-label">ข้อมูลเส้นทาง</div>
+      <div class="info-card" id="routeInfoCard"></div>
+      <div id="orsRouteInfo" style="margin-top:10px;display:none;">
+        <div class="info-card" id="orsRouteCard"></div>
+      </div>
+    </div>
+    <button class="btn-start" id="btnStart" disabled onclick="startNav()">🚀 เริ่มการเดินทาง</button>
+  </div>
+</div>
 
-            <div class="form-group">
-                <label>ชื่อผู้ใช้</label>
-                <input type="text" id="username" placeholder="กรอกชื่อผู้ใช้" autocomplete="off" />
-            </div>
-            <div class="form-group">
-                <label>รหัสผ่าน</label>
-                <input type="password" id="password" placeholder="กรอกรหัสผ่าน"
-                    onkeydown="if(event.key==='Enter')login()" />
-            </div>
-            <button class="login-btn" onclick="login()">เข้าสู่ระบบ</button>
-            <div class="error-msg" id="errorMsg">❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
-            <div style="margin-top:16px; font-size:12px; color:var(--muted); text-align:center;">
-                ทดสอบ: manager/1234 หรือ driver1/1234
-            </div>
+<!-- ===== FULLSCREEN NAV MAP (outside app shell, overlays everything) ===== -->
+<div id="navMap">
+  <div class="ors-loading" id="navLoading">
+    <div class="spinner"></div>
+    <p>กำลังโหลดเส้นทางจาก OpenRouteService...</p>
+  </div>
+</div>
+
+<!-- ORS info chip top-left -->
+<div id="orsChip"></div>
+
+<!-- Exit nav button top-right -->
+<button id="btnExitNav" onclick="exitNav()">✕ ออกจากแผนที่</button>
+
+<!-- HUD nav bar bottom overlay -->
+<div id="navHUD">
+  <div class="nav-bar">
+    <div class="nav-stat">
+      <div class="nav-stat-lbl">Speed km/h</div>
+      <div class="nav-stat-val" id="speedVal">0</div>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-stat">
+      <div class="nav-stat-lbl">จุดที่</div>
+      <div class="nav-stat-val" id="stopIdx">0</div>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-dest">
+      <div class="nav-dest-lbl">🧭 มุ่งหน้าไปยัง</div>
+      <div class="nav-dest-val" id="destName">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MANAGER APP ===== -->
+<div id="managerApp" class="app-shell">
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="btn-menu" onclick="toggleSidebar()">
+        <span class="menu-line"></span><span class="menu-line"></span><span class="menu-line"></span>
+      </button>
+      <div class="topbar-brand">SUT FLEET</div>
+      <div class="topbar-sub">— แดชบอร์ดผู้จัดการ</div>
+    </div>
+    <div class="topbar-right">
+      <div class="avatar">👔</div>
+      <span class="username-label" id="managerLabel">—</span>
+      <button class="btn-logout" onclick="logout()">ออก</button>
+    </div>
+  </div>
+  <div class="manager-body">
+    <div class="backdrop" id="backdrop" onclick="toggleSidebar()"></div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-head">
+        <span class="sidebar-title">📊 SUT FLEET</span>
+        <button class="btn-close" onclick="toggleSidebar()">✕</button>
+      </div>
+      <div class="tab-nav">
+        <button class="tab-btn active" id="t1btn" onclick="switchTab('t1')">🚛 ยานพาหนะ</button>
+        <button class="tab-btn" id="t2btn" onclick="switchTab('t2')">📋 ประวัติ</button>
+        <button class="tab-btn" id="t3btn" onclick="switchTab('t3')">🗺️ เส้นทาง</button>
+      </div>
+      <div class="tab-body">
+        <!-- T1 -->
+        <div class="tab-panel active" id="t1panel">
+          <div id="vStatusCards"></div>
+          <div class="dist-box">
+            <div class="section-label">📏 ระยะทางจริง (ORS)</div>
+            <div class="dist-row"><span class="pill v1">83-8715</span><span id="d1val" class="mono" style="font-size:13px;">—</span></div>
+            <div class="dist-row"><span class="pill v2">83-8716</span><span id="d2val" class="mono" style="font-size:13px;">—</span></div>
+            <div class="dist-total"><span style="font-size:12px;color:var(--muted);">รวมทั้งหมด</span><span class="dist-total-val" id="dtotal">—</span></div>
+          </div>
+          <div id="orsStatusBox"></div>
+          <div id="warnBox" class="hidden warn-box">
+            <div class="warn-title">⚠️ คำเตือนข้อมูล</div>
+            <div id="warnList"></div>
+          </div>
+          <div>
+            <div class="section-label">ตำนานแผนที่</div>
+            <div class="legend-item"><div class="l-line" style="background:var(--v1);"></div><span>เส้นทาง 83-8715 (ถนนจริง)</span></div>
+            <div class="legend-item"><div class="l-line" style="background:var(--v2);"></div><span>เส้นทาง 83-8716 (ถนนจริง)</span></div>
+            <div class="legend-item"><div class="l-dot" style="background:#ff4d6d;border:2px solid white;"></div><span>โรงจัดการขยะ</span></div>
+            <div class="legend-item"><div class="l-dot" style="background:var(--gold);"></div><span>จุดสำคัญ</span></div>
+            <div class="legend-item"><div class="l-dot" style="background:var(--v1);animation:pulse 2s infinite;"></div><span>ตำแหน่งรถ Real-time</span></div>
+          </div>
+          <div class="stat-grid">
+            <div class="stat-tile"><div class="st-lbl">จุดทั้งหมด</div><div class="st-val" id="totalPts">—</div></div>
+            <div class="stat-tile"><div class="st-lbl">จุดสำคัญ</div><div class="st-val" id="critPts">—</div></div>
+          </div>
         </div>
+        <!-- T2 -->
+        <div class="tab-panel" id="t2panel">
+          <select class="sdrop" id="histDrop" onchange="onHistChange()">
+            <option value="">— เลือกยานพาหนะ —</option>
+            <option value="0">🚛 83-8715</option>
+            <option value="1">🚛 83-8716</option>
+          </select>
+          <div id="histDayPicker" class="hidden">
+            <div class="section-label">📅 เลือกวัน</div>
+            <div class="day-chips" id="dayChips"></div>
+          </div>
+          <div id="histDetail" class="hidden" style="display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
+        <!-- T3 -->
+        <div class="tab-panel" id="t3panel">
+          <select class="sdrop" id="routeDrop" onchange="showRouteDetail()">
+            <option value="">— เลือกดูเส้นทาง —</option>
+            <option value="0">🚛 83-8715</option>
+            <option value="1">🚛 83-8716</option>
+          </select>
+          <div id="routeDetailCard"></div>
+        </div>
+      </div>
     </div>
 
-    <!-- ==================== DRIVER PAGE ==================== -->
-    <div id="driverPage" style="display:none; flex-direction:column;">
-        <div class="top-bar">
-            <div class="brand-sm">SUT FLEET</div>
-            <div class="user-info">
-                <div class="user-avatar">🚗</div>
-                <span id="driverName">คนขับ</span>
-                <button class="logout-btn" onclick="logout()">ออกจากระบบ</button>
-            </div>
-        </div>
-
-        <div class="driver-content">
-            <div id="carSelectSection">
-                <div class="section-title">เลือกยานพาหนะ</div>
-                <div class="car-grid" id="carGrid"></div>
-            </div>
-
-            <div class="route-info">
-                <div class="section-title">เส้นทางการเดินทาง</div>
-                <div class="waypoints">
-                    <div class="waypoint">
-                        <div>
-                            <div class="wp-dot start"></div>
-                            <div class="wp-line"></div>
-                        </div>
-                        <div class="wp-text">
-                            <div class="wp-label">จุดที่ 1 - จุดเริ่มต้น</div>
-                            <div class="wp-name">📚 เรียนรวม 1</div>
-                        </div>
-                    </div>
-                    <div class="waypoint">
-                        <div>
-                            <div class="wp-dot mid"></div>
-                            <div class="wp-line"></div>
-                        </div>
-                        <div class="wp-text">
-                            <div class="wp-label">จุดที่ 2</div>
-                            <div class="wp-name">🏢 อาคารสุรพัฒน์ 2</div>
-                        </div>
-                    </div>
-                    <div class="waypoint">
-                        <div>
-                            <div class="wp-dot end"></div>
-                        </div>
-                        <div class="wp-text">
-                            <div class="wp-label">จุดสิ้นสุด</div>
-                            <div class="wp-name">🏥 โรงพยาบาล มทส</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <button class="start-btn" id="startBtn" onclick="startNavigation()" disabled>
-                🚀 เริ่มการเดินทาง
-            </button>
-
-            <div class="nav-status-bar" id="navStatusBar">
-                <div class="nav-stat">
-                    <div class="nav-stat-label">ความเร็ว (กม./ชม.)</div>
-                    <div class="nav-stat-value" id="speedVal">0</div>
-                </div>
-                <div class="nav-divider"></div>
-                <div class="nav-stat">
-                    <div class="nav-stat-label">ระยะทาง (กม.)</div>
-                    <div class="nav-stat-value" id="distVal">0.0</div>
-                </div>
-                <div class="nav-divider"></div>
-                <div class="current-dest">
-                    <div class="current-dest-label">🧭 มุ่งหน้าไปยัง</div>
-                    <div class="current-dest-name" id="currentDestName">—</div>
-                </div>
-            </div>
-
-            <!-- ✅ แผนที่ Leaflet สำหรับคนขับ -->
-            <div id="navMap"></div>
-        </div>
+    <!-- MAP -->
+    <div class="map-mode-bar">
+      <div class="map-mode-label" id="mmLabel">🟢 Real-time — รถทุกคัน</div>
+      <button class="btn-back-rt" id="btnBackRt" onclick="backToRealtime()">← กลับ</button>
     </div>
+    <div id="managerMap"></div>
+    <div id="historyMap"></div>
 
-    <!-- ==================== MANAGER PAGE ==================== -->
-    <div id="managerPage" style="display:none; flex-direction:column;">
-        <div class="top-bar">
-            <div style="display:flex;align-items:center;gap:14px;">
-                <button class="drawer-open-btn" onclick="toggleSidebar()" title="เปิดรายละเอียด">
-                    <span class="hamburger-line"></span>
-                    <span class="hamburger-line"></span>
-                    <span class="hamburger-line"></span>
-                </button>
-                <div class="brand-sm">SUT FLEET <span style="color:var(--muted);font-size:13px;font-family:'Sarabun';">— แดชบอร์ดผู้จัดการ</span></div>
-            </div>
-            <div class="user-info">
-                <div class="live-stats" style="display:flex;gap:16px;">
-                    <div style="font-size:13px; color:var(--muted);">รถทั้งหมด: <span style="color:var(--primary);font-weight:700;">4</span></div>
-                    <div style="font-size:13px; color:var(--muted);">กำลังวิ่ง: <span style="color:var(--success);font-weight:700;" id="activeCount">0</span></div>
-                </div>
-                <div class="user-avatar">👔</div>
-                <span id="managerName">ผู้จัดการ</span>
-                <button class="logout-btn" onclick="logout()">ออกจากระบบ</button>
-            </div>
+    <!-- REAL-TIME HUD -->
+    <div class="rt-hud" id="rtHud">
+      <div class="rt-card" id="rtCard0">
+        <div class="rt-card-top">
+          <span class="rt-plate">83-8715</span>
+          <span class="rt-status"><span class="rt-dot"></span><span>Real-time</span></span>
         </div>
-
-        <div class="manager-content">
-            <!-- Backdrop -->
-            <div class="drawer-backdrop" id="drawerBackdrop" onclick="toggleSidebar()"></div>
-
-            <!-- Overlay Drawer -->
-            <div class="sidebar" id="managerSidebar">
-                <div>
-                    <div class="sidebar-header">📊 รายละเอียด</div>
-                    <div class="sidebar-sub">เลือกหัวข้อที่ต้องการ</div>
-                </div>
-                <button class="drawer-close-btn" onclick="toggleSidebar()" title="ปิด">✕</button>
-
-                <!-- Tab Navigation -->
-                <div class="sidebar-tabs">
-                    <button class="tab-btn active" id="tab1Btn" onclick="switchTab('tab1')">
-                        <span>🚐</span> รายละเอียดยานพาหนะ
-                    </button>
-                    <button class="tab-btn" id="tab2Btn" onclick="switchTab('tab2')">
-                        <span>📋</span> รายละเอียดย้อนหลัง
-                    </button>
-                </div>
-
-                <!-- Tab 1: Vehicle Detail -->
-                <div class="tab-content" id="tab1Content">
-                    <select class="vehicle-dropdown" id="vehicleDropdown" onchange="showVehicleDetail()">
-                        <option value="">— เลือกยานพาหนะ —</option>
-                        <option value="0">🚐 รถตู้ กข-001 (คนขับ A)</option>
-                        <option value="1">🚐 รถตู้ กข-002 (คนขับ B)</option>
-                        <option value="2">🚙 รถเก๋ง กข-003 (คนขับ C)</option>
-                        <option value="3">🚙 รถเก๋ง กข-004 (ว่าง)</option>
-                    </select>
-
-                    <div class="vehicle-detail-card" id="vehicleDetailCard" style="display:none;">
-                        <div class="detail-header">
-                            <div class="detail-car-icon" id="detailIcon">🚐</div>
-                            <div>
-                                <div class="detail-car-name" id="detailName">รถตู้ กข-001</div>
-                                <div class="detail-car-plate" id="detailPlate">กข-001 นครราชสีมา</div>
-                            </div>
-                        </div>
-                        <div class="detail-row">
-                            <span class="key">คนขับ</span>
-                            <span class="val" id="detailDriver">—</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="key">สถานะ</span>
-                            <span class="val" id="detailStatus">—</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="key">ระยะเวลาเดินทางรวม</span>
-                            <span class="val" id="detailTotalTime">—</span>
-                        </div>
-                        <div style="margin-top:14px;">
-                            <div class="section-title">เวลาจอดแต่ละจุด</div>
-                            <div class="stop-timeline" id="stopTimeline"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab 2: History (7 วันย้อนหลัง + เส้นทางบนแผนที่ + backup จุดที่ขาด) -->
-                <div class="tab-content" id="tab2Content" style="display:none;">
-
-                    <!-- เลือกรถ -->
-                    <select class="vehicle-dropdown" id="historyDropdown" onchange="onHistoryFilterChange()">
-                        <option value="">— เลือกยานพาหนะ —</option>
-                        <option value="0">🚐 รถตู้ กข-001</option>
-                        <option value="1">🚐 รถตู้ กข-002</option>
-                        <option value="2">🚙 รถเก๋ง กข-003</option>
-                        <option value="3">🚙 รถเก๋ง กข-004</option>
-                    </select>
-
-                    <!-- เลือกวัน (7 วันล่าสุด) -->
-                    <div class="day-picker" id="dayPicker" style="display:none;">
-                        <div class="day-picker-label">📅 เลือกวันที่</div>
-                        <div class="day-chips" id="dayChips"></div>
-                    </div>
-
-                    <!-- ผลลัพธ์ -->
-                    <div id="historyDetailCard" style="display:none;">
-
-                        <!-- header รถ -->
-                        <div class="history-car-header" id="historyCarHeader"></div>
-
-                        <!-- ปุ่มแสดงเส้นทางบนแผนที่ -->
-                        <button class="show-route-btn" id="showRouteBtn" onclick="showHistoryRouteOnMap()">
-                            🗺️ แสดงเส้นทางบนแผนที่
-                        </button>
-
-                        <!-- Missed-stop backup alert -->
-                        <div id="missedStopAlert" style="display:none;" class="missed-alert">
-                            <div class="missed-alert-title">⚠️ บันทึกจุดที่ไม่ผ่าน</div>
-                            <div id="missedStopList"></div>
-                        </div>
-
-                        <!-- timeline เส้นทาง -->
-                        <div class="section-title" style="margin-top:14px;">🗺️ เส้นทางการเดินทาง</div>
-                        <div class="route-history" id="routeHistory"></div>
-
-                        <!-- time bars -->
-                        <div class="section-title" style="margin-top:16px;">⏱️ เวลาที่ใช้แต่ละจุด</div>
-                        <div class="time-history" id="timeHistory"></div>
-
-                        <!-- summary -->
-                        <div class="history-summary" id="historySummary"></div>
-
-                        <!-- backup log ทั้งหมด -->
-                        <div class="section-title" style="margin-top:16px;">💾 Backup Log จุดที่ไม่ผ่าน</div>
-                        <div id="backupLog" class="backup-log"></div>
-                    </div>
-                </div>
-
-                <!-- Live summary stats -->
-                <div style="margin-top:auto; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);">
-                    <div class="section-title">ภาพรวมระบบ</div>
-                    <div class="live-stats">
-                        <div class="stat-card">
-                            <div class="s-label">กำลังวิ่ง</div>
-                            <div class="s-value" id="movingCount">0</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="s-label">จอดอยู่</div>
-                            <div class="s-value" id="stoppedCount">4</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- แถบบอก mode ปัจจุบัน -->
-            <div id="mapModeBar">
-                <div id="mapModeLabel">🟢 Real-time — รถทุกคัน</div>
-                <button id="backToRealtimeBtn" onclick="backToRealtime()" style="display:none;">
-                    ← กลับ Real-time
-                </button>
-            </div>
-
-            <!-- แผนที่ Real-time -->
-            <div id="managerMap"></div>
-
-            <!-- แผนที่ History (แยกจาก real-time ไม่ทับกัน) -->
-            <div id="historyMap" style="display:none;"></div>
+        <div class="rt-stop" id="rtStop0">รอข้อมูล...</div>
+        <div class="rt-meta" id="rtMeta0">จุดที่ 0 / 0</div>
+        <div class="rt-progress-bar"><div class="rt-progress-fill" id="rtProg0" style="width:0%"></div></div>
+      </div>
+      <div class="rt-card v2" id="rtCard1">
+        <div class="rt-card-top">
+          <span class="rt-plate">83-8716</span>
+          <span class="rt-status"><span class="rt-dot"></span><span>Real-time</span></span>
         </div>
+        <div class="rt-stop" id="rtStop1">รอข้อมูล...</div>
+        <div class="rt-meta" id="rtMeta1">จุดที่ 0 / 0</div>
+        <div class="rt-progress-bar"><div class="rt-progress-fill" id="rtProg1" style="width:0%"></div></div>
+      </div>
     </div>
-
-    <!-- ✅ Leaflet JS (แทน Google Maps API — ไม่ต้องมี API Key) -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <script>
-        // ==================== DATA ====================
-        const USERS = {
-            manager: { pass: '1234', role: 'manager', displayName: 'ผู้จัดการ สุรนารี' },
-            driver1: { pass: '1234', role: 'driver', displayName: 'สมชาย ใจดี' },
-            driver2: { pass: '1234', role: 'driver', displayName: 'สมหญิง มีสุข' },
-        };
-
-        const CARS = [
-            { id: 0, name: 'รถตู้ กข-001', plate: 'กข-001 นครราชสีมา', icon: '🚐', available: true,  color: '#00c9a7' },
-            { id: 1, name: 'รถตู้ กข-002', plate: 'กข-002 นครราชสีมา', icon: '🚐', available: true,  color: '#ffd740' },
-            { id: 2, name: 'รถเก๋ง กข-003', plate: 'กข-003 นครราชสีมา', icon: '🚙', available: false, color: '#ff6b35' },
-            { id: 3, name: 'รถเก๋ง กข-004', plate: 'กข-004 นครราชสีมา', icon: '🚙', available: true,  color: '#7c4dff' },
-        ];
-
-        // จุด Waypoint ภายใน มทส (ละติจูด/ลองจิจูด)
-        const WAYPOINTS = [
-            { name: 'เรียนรวม 1',       lat: 14.8791, lng: 102.0152, icon: '📚' },
-            { name: 'อาคารสุรพัฒน์ 2',  lat: 14.8823, lng: 102.0204, icon: '🏢' },
-            { name: 'โรงพยาบาล มทส',    lat: 14.8760, lng: 102.0238, icon: '🏥' },
-        ];
-
-        const VEHICLE_DATA = [
-            {
-                id: 0, icon: '🚐', name: 'รถตู้ กข-001', plate: 'กข-001 นครราชสีมา',
-                driver: 'สมชาย ใจดี', status: 'moving', color: '#00c9a7',
-                lat: 14.8800, lng: 102.0165, dest: 'อาคารสุรพัฒน์ 2',
-                totalTime: '1 ชม. 23 นาที',
-                stops: [
-                    { name: 'เรียนรวม 1',      time: '12 นาที' },
-                    { name: 'อาคารสุรพัฒน์ 2', time: '8 นาที (กำลังจะถึง)' },
-                    { name: 'โรงพยาบาล มทส',   time: '—' },
-                ]
-            },
-            {
-                id: 1, icon: '🚐', name: 'รถตู้ กข-002', plate: 'กข-002 นครราชสีมา',
-                driver: 'สมหญิง มีสุข', status: 'stopped', color: '#ffd740',
-                lat: 14.8760, lng: 102.0190, dest: 'โรงพยาบาล มทส',
-                totalTime: '45 นาที',
-                stops: [
-                    { name: 'เรียนรวม 1',      time: '10 นาที' },
-                    { name: 'อาคารสุรพัฒน์ 2', time: '15 นาที' },
-                    { name: 'โรงพยาบาล มทส',   time: 'จอดอยู่' },
-                ]
-            },
-            {
-                id: 2, icon: '🚙', name: 'รถเก๋ง กข-003', plate: 'กข-003 นครราชสีมา',
-                driver: 'วิชัย รักดี', status: 'moving', color: '#ff6b35',
-                lat: 14.8810, lng: 102.0230, dest: 'เรียนรวม 1',
-                totalTime: '32 นาที',
-                stops: [
-                    { name: 'เรียนรวม 1',      time: 'กำลังมุ่งหน้า' },
-                    { name: 'อาคารสุรพัฒน์ 2', time: '—' },
-                    { name: 'โรงพยาบาล มทส',   time: '—' },
-                ]
-            },
-            {
-                id: 3, icon: '🚙', name: 'รถเก๋ง กข-004', plate: 'กข-004 นครราชสีมา',
-                driver: '—', status: 'idle', color: '#7c4dff',
-                lat: 14.8780, lng: 102.0145, dest: '—',
-                totalTime: '—',
-                stops: [
-                    { name: 'เรียนรวม 1',      time: '—' },
-                    { name: 'อาคารสุรพัฒน์ 2', time: '—' },
-                    { name: 'โรงพยาบาล มทส',   time: '—' },
-                ]
-            },
-        ];
-
-        // ==================== STATE ====================
-        let currentRole  = 'manager';
-        let selectedCar  = null;
-        let navMap       = null;
-        let managerMap   = null;
-        let driverMarker = null;
-        let driverLatLng = null;
-        let navInterval  = null;
-        let currentWpIndex = 0;
-        let animStep     = 0;
-        let managerMarkers = [];
-        let sidebarOpen  = false;
-        let currentTab   = 'tab1';
-        let selectedHistoryVehicle = null;
-        let selectedHistoryDate    = null;
-
-        // ==================== SIDEBAR / TAB ====================
-        function toggleSidebar() {
-            sidebarOpen = !sidebarOpen;
-            const sidebar  = document.getElementById('managerSidebar');
-            const backdrop = document.getElementById('drawerBackdrop');
-            if (sidebarOpen) {
-                sidebar.classList.add('drawer-open');
-                backdrop.classList.add('backdrop-visible');
-                document.body.style.overflow = 'hidden';
-            } else {
-                sidebar.classList.remove('drawer-open');
-                backdrop.classList.remove('backdrop-visible');
-                document.body.style.overflow = '';
-            }
-        }
-
-        function switchTab(tab) {
-            currentTab = tab;
-            document.getElementById('tab1Btn').classList.toggle('active', tab === 'tab1');
-            document.getElementById('tab2Btn').classList.toggle('active', tab === 'tab2');
-            document.getElementById('tab1Content').style.display = tab === 'tab1' ? 'block' : 'none';
-            document.getElementById('tab2Content').style.display = tab === 'tab2' ? 'block' : 'none';
-        }
-
-        // ==================== LOGIN ====================
-        function selectRole(r) {
-            currentRole = r;
-            document.getElementById('roleManager').classList.toggle('active', r === 'manager');
-            document.getElementById('roleDriver').classList.toggle('active', r === 'driver');
-        }
-
-        function login() {
-            const u   = document.getElementById('username').value.trim();
-            const p   = document.getElementById('password').value;
-            const err = document.getElementById('errorMsg');
-            const user = USERS[u];
-            if (!user || user.pass !== p) { err.style.display = 'block'; return; }
-            if (user.role !== currentRole)  { err.style.display = 'block'; return; }
-            err.style.display = 'none';
-            document.getElementById('loginPage').style.display = 'none';
-            if (currentRole === 'driver') {
-                document.getElementById('driverPage').style.display = 'flex';
-                document.getElementById('driverName').textContent = user.displayName;
-                initDriverPage();
-            } else {
-                document.getElementById('managerPage').style.display = 'flex';
-                document.getElementById('managerName').textContent = user.displayName;
-                // ✅ เรียก Leaflet โดยตรง ไม่ต้องรอ callback จาก Google
-                setTimeout(initManagerMap, 100);
-            }
-        }
-
-        function logout() { location.reload(); }
-
-        // ==================== DRIVER PAGE ====================
-        function initDriverPage() {
-            const grid = document.getElementById('carGrid');
-            grid.innerHTML = '';
-            CARS.forEach(car => {
-                const div = document.createElement('div');
-                div.className = 'car-card' + (car.available ? '' : ' unavailable');
-                div.id = 'car_' + car.id;
-                div.innerHTML = `
-                    <div class="car-icon">${car.icon}</div>
-                    <div class="car-name">${car.name}</div>
-                    <div class="car-plate">${car.plate}</div>
-                    <div class="car-status ${car.available ? 'status-available' : 'status-busy'}">${car.available ? '✅ ว่าง' : '🔴 ใช้งาน'}</div>
-                `;
-                if (car.available) div.onclick = () => selectCar(car.id);
-                grid.appendChild(div);
-            });
-        }
-
-        function selectCar(id) {
-            document.querySelectorAll('.car-card').forEach(c => c.classList.remove('selected'));
-            document.getElementById('car_' + id).classList.add('selected');
-            selectedCar = id;
-            document.getElementById('startBtn').disabled = false;
-        }
-
-        // ==================== DRIVER NAVIGATION (Leaflet) ====================
-        function startNavigation() {
-            if (selectedCar === null) return;
-            document.getElementById('carSelectSection').style.display = 'none';
-            document.getElementById('startBtn').style.display = 'none';
-            document.getElementById('navStatusBar').style.display = 'flex';
-
-            const mapDiv = document.getElementById('navMap');
-            mapDiv.style.display = 'block';
-
-            currentWpIndex = 0;
-            animStep = 0;
-
-            // ✅ สร้างแผนที่ Leaflet สำหรับคนขับ (ถ้ายังไม่มี)
-            if (!navMap) {
-                navMap = L.map('navMap', { zoomControl: true })
-                           .setView([WAYPOINTS[0].lat, WAYPOINTS[0].lng], 16);
-
-                // ✅ OpenStreetMap tile layer (ฟรี ไม่ต้องมี API Key)
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    maxZoom: 19
-                }).addTo(navMap);
-
-                // วาด Waypoint markers
-                const wpColors = ['#00e676', '#ffd740', '#ff5252'];
-                WAYPOINTS.forEach((wp, i) => {
-                    const icon = L.divIcon({
-                        html: `<div style="
-                            background:${wpColors[i]};
-                            width:18px; height:18px;
-                            border-radius:50%;
-                            border:3px solid white;
-                            box-shadow:0 0 10px ${wpColors[i]};
-                            display:flex; align-items:center; justify-content:center;
-                        "></div>`,
-                        className: '',
-                        iconAnchor: [9, 9]
-                    });
-                    L.marker([wp.lat, wp.lng], { icon })
-                     .addTo(navMap)
-                     .bindPopup(`<b style="color:#e8eef8">${wp.icon} ${wp.name}</b>`);
-                });
-
-                // วาดเส้นเส้นทาง polyline
-                const latlngs = WAYPOINTS.map(w => [w.lat, w.lng]);
-                L.polyline(latlngs, {
-                    color: '#00c9a7',
-                    weight: 4,
-                    dashArray: '10,6',
-                    opacity: 0.85
-                }).addTo(navMap);
-            }
-
-            // ✅ Marker รถคนขับ
-            driverLatLng = { lat: WAYPOINTS[0].lat, lng: WAYPOINTS[0].lng };
-            const carIcon = L.divIcon({
-                html: `<div style="font-size:30px; filter:drop-shadow(0 3px 8px rgba(0,0,0,0.6));">🚗</div>`,
-                className: '',
-                iconAnchor: [15, 15]
-            });
-            if (driverMarker) driverMarker.remove();
-            driverMarker = L.marker([driverLatLng.lat, driverLatLng.lng], { icon: carIcon }).addTo(navMap);
-
-            updateNavStatus();
-
-            // เริ่ม animation เคลื่อนที่ทุก 1.5 วินาที
-            if (navInterval) clearInterval(navInterval);
-            navInterval = setInterval(animateDriver, 1500);
-        }
-
-        function animateDriver() {
-            if (currentWpIndex >= WAYPOINTS.length - 1) {
-                clearInterval(navInterval);
-                document.getElementById('currentDestName').textContent = '🎉 ถึงจุดหมายแล้ว!';
-                return;
-            }
-            const from = WAYPOINTS[currentWpIndex];
-            const to   = WAYPOINTS[currentWpIndex + 1];
-            const steps = 20;
-            animStep++;
-
-            if (animStep >= steps) {
-                currentWpIndex++;
-                animStep = 0;
-                driverLatLng = { lat: to.lat, lng: to.lng };
-                updateNavStatus();
-            } else {
-                const t = animStep / steps;
-                driverLatLng = {
-                    lat: from.lat + (to.lat - from.lat) * t,
-                    lng: from.lng + (to.lng - from.lng) * t
-                };
-            }
-
-            // ✅ อัปเดต Leaflet marker
-            if (driverMarker) {
-                driverMarker.setLatLng([driverLatLng.lat, driverLatLng.lng]);
-                navMap.panTo([driverLatLng.lat, driverLatLng.lng], { animate: true, duration: 1 });
-            }
-
-            // จำลองความเร็ว / ระยะทาง
-            document.getElementById('speedVal').textContent = Math.floor(25 + Math.random() * 20);
-            document.getElementById('distVal').textContent  = (currentWpIndex + animStep / 20).toFixed(1);
-        }
-
-        function updateNavStatus() {
-            const dest = currentWpIndex < WAYPOINTS.length - 1
-                ? WAYPOINTS[currentWpIndex + 1]
-                : WAYPOINTS[WAYPOINTS.length - 1];
-            document.getElementById('currentDestName').textContent = dest.icon + ' ' + dest.name;
-        }
-
-        // ==================== MANAGER MAP (Leaflet) ====================
-        function initManagerMap() {
-            const mapEl = document.getElementById('managerMap');
-
-            // กำหนดขนาด explicit ให้ Leaflet render ได้ถูกต้อง
-            mapEl.style.width  = '100%';
-            mapEl.style.height = '100%';
-            mapEl.style.position = 'absolute';
-            mapEl.style.inset = '0';
-            mapEl.style.zIndex = '1';
-
-            // สร้าง Leaflet map
-            managerMap = L.map('managerMap', {
-                zoomControl: true,
-                attributionControl: true
-            }).setView([14.8791, 102.0190], 15);
-
-            // OpenStreetMap tile layer (ฟรี ไม่ต้อง API Key)
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                maxZoom: 19
-            }).addTo(managerMap);
-
-            // บังคับให้ Leaflet คำนวณขนาด container ใหม่ (แก้ปัญหา map หาย)
-            setTimeout(() => { managerMap.invalidateSize(); }, 200);
-            setTimeout(() => { managerMap.invalidateSize(); }, 600);
-
-            // invalidateSize เมื่อหน้าต่างเปลี่ยนขนาด
-            window.addEventListener('resize', () => {
-                if (managerMap) managerMap.invalidateSize();
-            });
-
-            // ─── Waypoint markers ───────────────────────────────────────
-            const wpColors = ['#00e676', '#ffd740', '#ff5252'];
-            WAYPOINTS.forEach((wp, i) => {
-                const wpIcon = L.divIcon({
-                    html: `<div style="
-                        background:${wpColors[i]};
-                        width:20px; height:20px;
-                        border-radius:50%;
-                        border:3px solid #0a0f1e;
-                        box-shadow:0 0 12px ${wpColors[i]};
-                        display:flex; align-items:center; justify-content:center;
-                        font-size:10px;
-                    "></div>`,
-                    className: '',
-                    iconAnchor: [10, 10]
-                });
-                L.marker([wp.lat, wp.lng], { icon: wpIcon })
-                 .addTo(managerMap)
-                 .bindPopup(`
-                    <div style="font-family:Sarabun,sans-serif;">
-                        <b style="font-size:14px;">${wp.icon} ${wp.name}</b><br>
-                        <span style="font-size:12px;color:#aabbcc;">จุดจอดรถเก็บขยะ</span>
-                    </div>`);
-            });
-
-            // ─── Route polyline ─────────────────────────────────────────
-            L.polyline(WAYPOINTS.map(w => [w.lat, w.lng]), {
-                color: '#00c9a7',
-                weight: 4,
-                dashArray: '10,7',
-                opacity: 0.7
-            }).addTo(managerMap);
-
-            // ─── Vehicle markers (รถทุกคัน) ─────────────────────────────
-            VEHICLE_DATA.forEach((v, i) => {
-                const statusColor = v.status === 'moving'  ? '#00e676'
-                                  : v.status === 'stopped' ? '#ffd740'
-                                  : '#9ca3af';
-
-                const statusLabel = v.status === 'moving'  ? '🟢 วิ่งอยู่'
-                                  : v.status === 'stopped' ? '🟡 จอดอยู่'
-                                  : '⚪ ว่าง';
-
-                const pulseStyle = v.status === 'moving'
-                    ? 'animation:pulse2 1.4s ease-out infinite;'
-                    : '';
-
-                const icon = L.divIcon({
-                    html: `
-                    <div style="position:relative; width:56px; height:64px; text-align:center;">
-                        <!-- วงกลมรัศมี pulse -->
-                        <div style="
-                            position:absolute; top:4px; left:4px;
-                            width:48px; height:48px; border-radius:50%;
-                            background:${v.color}30;
-                            border:2px solid ${v.color};
-                            ${pulseStyle}
-                        "></div>
-                        <!-- ตัวรถ -->
-                        <div style="
-                            position:absolute; top:4px; left:4px;
-                            width:48px; height:48px; border-radius:50%;
-                            background:${v.color}18;
-                            border:2.5px solid ${v.color};
-                            display:flex; align-items:center; justify-content:center;
-                            font-size:22px;
-                            box-shadow: 0 0 16px ${v.color}80;
-                        ">${v.icon}</div>
-                        <!-- จุดสถานะ -->
-                        <div style="
-                            position:absolute; top:0; right:2px;
-                            width:13px; height:13px; border-radius:50%;
-                            background:${statusColor};
-                            border:2px solid #0a0f1e;
-                            box-shadow:0 0 6px ${statusColor};
-                        "></div>
-                        <!-- label ชื่อรถ -->
-                        <div style="
-                            position:absolute; bottom:0; left:50%;
-                            transform:translateX(-50%);
-                            background:#0a0f1ecc;
-                            color:#e8eef8;
-                            font-size:9px; font-weight:700;
-                            white-space:nowrap;
-                            padding:1px 5px; border-radius:4px;
-                            border:1px solid ${v.color}66;
-                            font-family:Orbitron,sans-serif;
-                            letter-spacing:0.5px;
-                        ">${v.plate.split(' ')[0]}</div>
-                    </div>`,
-                    className: '',
-                    iconSize:   [56, 64],
-                    iconAnchor: [28, 48],
-                    popupAnchor:[0, -50]
-                });
-
-                const marker = L.marker([v.lat, v.lng], { icon })
-                    .addTo(managerMap)
-                    .bindPopup(`
-                        <div style="font-family:Sarabun,sans-serif; min-width:190px;">
-                            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1);">
-                                <span style="font-size:26px;">${v.icon}</span>
-                                <div>
-                                    <div style="font-weight:700;font-size:14px;">${v.name}</div>
-                                    <div style="font-size:11px;color:#8899bb;font-family:Orbitron,sans-serif;">${v.plate}</div>
-                                </div>
-                            </div>
-                            <div style="font-size:13px;margin-bottom:4px;">👤 คนขับ: <b>${v.driver}</b></div>
-                            <div style="font-size:13px;margin-bottom:4px;">🧭 กำลังไป: <b>${v.dest}</b></div>
-                            <div style="font-size:13px;margin-bottom:4px;">⏱ เวลารวม: <b>${v.totalTime}</b></div>
-                            <div style="font-size:13px;font-weight:700;color:${statusColor};margin-top:6px;">${statusLabel}</div>
-                        </div>
-                    `);
-
-                managerMarkers.push(marker);
-            });
-
-            // ─── fitBounds ให้เห็นรถทุกคันในหน้าจอ ──────────────────────
-            const allLatLngs = [
-                ...VEHICLE_DATA.map(v => [v.lat, v.lng]),
-                ...WAYPOINTS.map(w => [w.lat, w.lng])
-            ];
-            managerMap.fitBounds(allLatLngs, { padding: [50, 50] });
-
-            // ─── Stats ───────────────────────────────────────────────────
-            const movingCount = VEHICLE_DATA.filter(v => v.status === 'moving').length;
-            document.getElementById('activeCount').textContent  = movingCount;
-            document.getElementById('movingCount').textContent  = movingCount;
-            document.getElementById('stoppedCount').textContent = VEHICLE_DATA.length - movingCount;
-
-            // จำลองการเคลื่อนที่
-            simulateManagerVehicles();
-        }
-
-        function simulateManagerVehicles() {
-            setInterval(() => {
-                VEHICLE_DATA.forEach((v, i) => {
-                    if (v.status === 'moving') {
-                        v.lat += (Math.random() - 0.5) * 0.00025;
-                        v.lng += (Math.random() - 0.5) * 0.00025;
-                        if (managerMarkers[i]) managerMarkers[i].setLatLng([v.lat, v.lng]);
-                    }
-                });
-            }, 2000);
-        }
-
-        // ==================== VEHICLE DETAIL (Tab 1) ====================
-        function showVehicleDetail() {
-            const sel  = document.getElementById('vehicleDropdown').value;
-            const card = document.getElementById('vehicleDetailCard');
-            if (sel === '') { card.style.display = 'none'; return; }
-            const v = VEHICLE_DATA[parseInt(sel)];
-            card.style.display = 'block';
-            document.getElementById('detailIcon').textContent      = v.icon;
-            document.getElementById('detailName').textContent      = v.name;
-            document.getElementById('detailPlate').textContent     = v.plate;
-            document.getElementById('detailDriver').textContent    = v.driver;
-            document.getElementById('detailTotalTime').textContent = v.totalTime;
-            const statusMap = {
-                moving:  '<span class="val status-moving">🟢 กำลังเคลื่อนที่</span>',
-                stopped: '<span class="val" style="color:var(--warning)">🟡 จอดอยู่</span>',
-                idle:    '<span class="val" style="color:var(--muted)">⚪ ว่าง</span>'
-            };
-            document.getElementById('detailStatus').innerHTML = statusMap[v.status];
-            document.getElementById('stopTimeline').innerHTML = v.stops.map((s, i) => `
-                <div class="stop-item">
-                    <div class="stop-num">${i + 1}</div>
-                    <div>
-                        <div class="stop-name">${WAYPOINTS[i].icon} ${s.name}</div>
-                        <div class="stop-time">⏱ ${s.time}</div>
-                    </div>
-                </div>
-            `).join('');
-
-            // ✅ ใช้ Leaflet .panTo() แทน Google Maps .panTo({ lat, lng })
-            if (managerMap) managerMap.panTo([v.lat, v.lng], { animate: true });
-        }
-
-        // ==================== HISTORY DATA (7 วันย้อนหลัง) ====================
-        // จุดที่กำหนด (REQUIRED_STOPS) — มีพิกัดละติจูด/ลองจิจูด
-        const REQUIRED_STOPS = [
-            { name: 'เรียนรวม 1',       icon: '📚', lat: 14.8791, lng: 102.0152 },
-            { name: 'อาคารสุรพัฒน์ 2',  icon: '🏢', lat: 14.8823, lng: 102.0204 },
-            { name: 'โรงพยาบาล มทส',    icon: '🏥', lat: 14.8760, lng: 102.0238 },
-        ];
-
-        // สร้าง mock history 7 วัน สำหรับรถแต่ละคัน
-        function generateHistory() {
-            const today = new Date();
-            const db = {}; // db[vehicleId][dateStr] = dayRecord
-
-            VEHICLE_DATA.forEach(v => {
-                db[v.id] = {};
-                for (let d = 0; d < 7; d++) {
-                    const date = new Date(today);
-                    date.setDate(today.getDate() - d);
-                    const dateStr = date.toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'numeric' });
-
-                    // สุ่มว่าจุดไหนบ้างที่ไม่ผ่าน (idleCar = ไม่วิ่งเลย)
-                    const idleCar = (v.status === 'idle' && d < 3);
-                    const stops = REQUIRED_STOPS.map((wp, i) => {
-                        const visited = idleCar ? false : (Math.random() > (d === 0 ? 0.05 : 0.25));
-                        const h = 7 + i * 2 + Math.floor(Math.random() * 2);
-                        const mArr = String(Math.floor(Math.random() * 50)).padStart(2,'0');
-                        const mDep = String(parseInt(mArr) + 8 + Math.floor(Math.random()*10)).padStart(2,'0');
-                        const dur  = visited ? (8 + Math.floor(Math.random()*22)) : 0;
-                        // พิกัดที่บันทึกจริง (ถ้าไม่ผ่าน = null)
-                        const actualLat = visited ? wp.lat + (Math.random()-0.5)*0.0008 : null;
-                        const actualLng = visited ? wp.lng + (Math.random()-0.5)*0.0008 : null;
-                        return {
-                            name: wp.name, icon: wp.icon,
-                            requiredLat: wp.lat, requiredLng: wp.lng,
-                            actualLat, actualLng,
-                            visited,
-                            arrive: visited ? `${h}:${mArr}` : '—',
-                            depart: visited ? `${h}:${mDep}` : '—',
-                            duration: visited ? `${dur} นาที` : '—',
-                            distance: visited ? `${(1.1 + i*1.0 + Math.random()*0.4).toFixed(1)} กม.` : '—',
-                        };
-                    });
-
-                    // สร้าง polyline จุดที่ผ่านจริง
-                    const trackPoints = [];
-                    if (!idleCar) {
-                        // จุดเริ่มต้นก่อน waypoint แรก
-                        trackPoints.push([14.8775 + (Math.random()-0.5)*0.002, 102.0130 + (Math.random()-0.5)*0.002]);
-                        stops.forEach(s => {
-                            if (s.visited && s.actualLat) {
-                                // สุ่ม intermediate points
-                                trackPoints.push([s.actualLat + (Math.random()-0.5)*0.001, s.actualLng + (Math.random()-0.5)*0.001]);
-                                trackPoints.push([s.actualLat, s.actualLng]);
-                            }
-                        });
-                    }
-
-                    const missedStops = stops.filter(s => !s.visited);
-                    const totalDur    = stops.reduce((acc, s) => acc + (parseInt(s.duration) || 0), 0);
-                    const trips       = stops.filter(s => s.visited).length;
-
-                    db[v.id][dateStr] = { dateStr, stops, trackPoints, missedStops, totalDur, trips,
-                        totalTime: totalDur ? `${Math.floor(totalDur/60) ? Math.floor(totalDur/60)+' ชม. ' : ''}${totalDur%60} นาที` : '—',
-                        totalDistance: trips ? `${(trips * 1.1 + Math.random()).toFixed(1)} กม.` : '—'
-                    };
-                }
-            });
-            return db;
-        }
-        const HISTORY_DB = generateHistory();
-
-        // สร้าง array 7 วัน (label + key)
-        function get7Days() {
-            const days = [];
-            const today = new Date();
-            const dayNames = ['อา','จ','อ','พ','พฤ','ศ','ส'];
-            for (let d = 0; d < 7; d++) {
-                const date = new Date(today);
-                date.setDate(today.getDate() - d);
-                const label = d === 0 ? 'วันนี้' : d === 1 ? 'เมื่อวาน' : `${dayNames[date.getDay()]} ${date.getDate()}`;
-                const key = date.toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'numeric' });
-                days.push({ label, key, date });
-            }
-            return days;
-        }
-
-        function onHistoryFilterChange() {
-            const sel = document.getElementById('historyDropdown').value;
-            document.getElementById('historyDetailCard').style.display = 'none';
-            if (sel === '') { document.getElementById('dayPicker').style.display = 'none'; return; }
-            selectedHistoryVehicle = parseInt(sel);
-            selectedHistoryDate    = null;
-
-            // สร้าง day chips
-            const picker = document.getElementById('dayPicker');
-            picker.style.display = 'block';
-            const chips  = document.getElementById('dayChips');
-            chips.innerHTML = get7Days().map((d, i) =>
-                `<button class="day-chip ${i===0?'active':''}" onclick="selectHistoryDay('${d.key}', this)">${d.label}</button>`
-            ).join('');
-
-            // default วันนี้
-            const todayKey = get7Days()[0].key;
-            selectHistoryDay(todayKey, chips.children[0]);
-        }
-
-        function selectHistoryDay(dateKey, el) {
-            document.querySelectorAll('.day-chip').forEach(c => c.classList.remove('active'));
-            el.classList.add('active');
-            selectedHistoryDate = dateKey;
-            renderHistoryDetail();
-        }
-
-        function renderHistoryDetail() {
-            if (selectedHistoryVehicle === null || !selectedHistoryDate) return;
-            const v   = VEHICLE_DATA[selectedHistoryVehicle];
-            const rec = HISTORY_DB[v.id][selectedHistoryDate];
-            if (!rec) return;
-
-            document.getElementById('historyDetailCard').style.display = 'block';
-
-            // ── header ──
-            document.getElementById('historyCarHeader').innerHTML = `
-                <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--card);border-radius:10px;margin-bottom:4px;">
-                    <span style="font-size:28px">${v.icon}</span>
-                    <div style="flex:1">
-                        <div style="font-weight:700;font-size:15px;">${v.name}</div>
-                        <div style="font-size:12px;color:var(--muted);">📅 ${rec.dateStr}</div>
-                    </div>
-                    <div style="text-align:right">
-                        <div style="font-size:11px;color:var(--muted);">จุดที่ผ่าน</div>
-                        <div style="font-size:18px;font-weight:700;color:${rec.trips===REQUIRED_STOPS.length?'var(--success)':'var(--warning)'}">
-                            ${rec.trips}/${REQUIRED_STOPS.length}
-                        </div>
-                    </div>
-                </div>`;
-
-            // ── missed stop alert ──
-            const alertEl = document.getElementById('missedStopAlert');
-            if (rec.missedStops.length > 0) {
-                alertEl.style.display = 'block';
-                document.getElementById('missedStopList').innerHTML = rec.missedStops.map(s => `
-                    <div class="missed-item">
-                        <span class="missed-icon">${s.icon}</span>
-                        <div class="missed-info">
-                            <div class="missed-name">${s.name}</div>
-                            <div class="missed-coord">📍 ${s.requiredLat.toFixed(4)}, ${s.requiredLng.toFixed(4)}</div>
-                        </div>
-                        <span class="missed-badge">ไม่ผ่าน</span>
-                    </div>`).join('');
-            } else {
-                alertEl.style.display = 'none';
-            }
-
-            // ── route timeline ──
-            document.getElementById('routeHistory').innerHTML = rec.stops.map((s, i) => {
-                const col = s.visited ? ['#00e676','#ffd740','#ff5252'][i] : '#ff4444';
-                return `
-                <div class="history-route-item">
-                    <div class="history-route-dot-wrap">
-                        <div class="history-route-dot" style="background:${col};box-shadow:0 0 8px ${col};"></div>
-                        ${i < rec.stops.length-1 ? '<div class="history-route-line"></div>' : ''}
-                    </div>
-                    <div class="history-route-content">
-                        <div class="history-route-name" style="color:${s.visited?'inherit':'#ff7777'}">
-                            ${s.icon} ${s.name} ${s.visited ? '' : '<span style="font-size:11px;background:#ff444422;color:#ff7777;padding:1px 7px;border-radius:8px;margin-left:4px;">❌ ไม่ผ่าน</span>'}
-                        </div>
-                        <div class="history-route-meta">
-                            <span>🕐 ถึง ${s.arrive}</span>
-                            ${s.depart !== '—' ? `<span>🚀 ออก ${s.depart}</span>` : ''}
-                            <span>📏 ${s.distance}</span>
-                            ${s.actualLat ? `<span>📡 ${s.actualLat.toFixed(5)}, ${s.actualLng.toFixed(5)}</span>` : ''}
-                        </div>
-                    </div>
-                </div>`; }).join('');
-
-            // ── time bars ──
-            const maxDur = Math.max(...rec.stops.map(s => parseInt(s.duration) || 0), 1);
-            document.getElementById('timeHistory').innerHTML = rec.stops.map((s, i) => {
-                const dur = parseInt(s.duration) || 0;
-                const pct = Math.round((dur / maxDur) * 100);
-                const col = s.visited ? ['#00e676','#ffd740','#ff5252'][i] : '#555';
-                return `
-                <div class="time-bar-item">
-                    <div class="time-bar-label">${s.icon} ${s.name}</div>
-                    <div class="time-bar-wrap">
-                        <div class="time-bar" style="width:${pct}%;background:${col};"></div>
-                        <span class="time-bar-val" style="color:${s.visited?'inherit':'var(--muted)'}">${s.duration}</span>
-                    </div>
-                </div>`; }).join('');
-
-            // ── summary ──
-            document.getElementById('historySummary').innerHTML = `
-                <div class="summary-grid">
-                    <div class="summary-item">
-                        <div class="s-ico">📏</div>
-                        <div class="s-val">${rec.totalDistance}</div>
-                        <div class="s-lbl">ระยะทางรวม</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="s-ico">⏱️</div>
-                        <div class="s-val">${rec.totalTime}</div>
-                        <div class="s-lbl">เวลารวม</div>
-                    </div>
-                    <div class="summary-item">
-                        <div class="s-ico">✅</div>
-                        <div class="s-val">${rec.trips}/${REQUIRED_STOPS.length}</div>
-                        <div class="s-lbl">จุดที่ผ่าน</div>
-                    </div>
-                </div>`;
-
-            // ── Backup log ──
-            renderBackupLog(v.id);
-        }
-
-        // รวม missed stops ทุกวันของรถคันนั้น → backup log
-        function renderBackupLog(vehicleId) {
-            const days  = get7Days();
-            const rows  = [];
-            days.forEach(d => {
-                const rec = HISTORY_DB[vehicleId]?.[d.key];
-                if (!rec) return;
-                rec.missedStops.forEach(s => {
-                    rows.push({ date: d.key, dayLabel: d.label, stop: s });
-                });
-            });
-            const el = document.getElementById('backupLog');
-            if (rows.length === 0) {
-                el.innerHTML = `<div class="backup-empty">✅ ไม่มีจุดที่ขาด ทุกวันผ่านครบ</div>`;
-                return;
-            }
-            el.innerHTML = rows.map(r => `
-                <div class="backup-row">
-                    <div class="backup-date">${r.dayLabel}</div>
-                    <div class="backup-stop">
-                        <span>${r.stop.icon} ${r.stop.name}</span>
-                        <span class="backup-coord">Lat ${r.stop.requiredLat.toFixed(5)} / Lng ${r.stop.requiredLng.toFixed(5)}</span>
-                    </div>
-                    <span class="backup-tag">MISSED</span>
-                </div>`).join('');
-        }
-
-        // ==================== HISTORY MAP (แยกจาก real-time) ====================
-        let historyMap     = null;   // Leaflet map สำหรับ history โดยเฉพาะ
-        let historyLayers  = [];     // เก็บ layer ทั้งหมดใน historyMap
-
-        function showHistoryRouteOnMap() {
-            if (selectedHistoryVehicle === null || !selectedHistoryDate) return;
-            const v   = VEHICLE_DATA[selectedHistoryVehicle];
-            const rec = HISTORY_DB[v.id][selectedHistoryDate];
-            if (!rec) return;
-
-            if (rec.trackPoints.length < 2) {
-                alert('ไม่มีข้อมูลเส้นทางของวันนี้ (รถไม่ได้ออกวิ่ง)'); return;
-            }
-
-            // ปิด sidebar
-            if (sidebarOpen) toggleSidebar();
-
-            // ซ่อน real-time map → แสดง history map
-            document.getElementById('managerMap').style.display  = 'none';
-            document.getElementById('historyMap').style.display  = 'block';
-
-            // อัปเดต mode bar
-            document.getElementById('mapModeLabel').innerHTML =
-                `📅 ย้อนหลัง — <b style="color:${v.color}">${v.name}</b> วันที่ ${rec.dateStr}`;
-            document.getElementById('backToRealtimeBtn').style.display = 'block';
-
-            // สร้าง historyMap ครั้งแรก
-            if (!historyMap) {
-                historyMap = L.map('historyMap', { zoomControl: true })
-                              .setView([14.8791, 102.0190], 15);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-                    maxZoom: 19
-                }).addTo(historyMap);
-                setTimeout(() => historyMap.invalidateSize(), 200);
-            } else {
-                // ลบ layer เก่าทั้งหมด
-                historyLayers.forEach(l => { try { l.remove(); } catch(e){} });
-                historyLayers = [];
-                historyMap.invalidateSize();
-            }
-
-            // ── วาด required stops (จุดที่กำหนด) ──
-            REQUIRED_STOPS.forEach((wp, i) => {
-                const circle = L.circleMarker([wp.lat, wp.lng], {
-                    radius: 14, color: '#ffffff', fillColor: '#334', fillOpacity: 0.4,
-                    weight: 2, dashArray: '4,3'
-                }).addTo(historyMap)
-                  .bindPopup(`<b>${wp.icon} ${wp.name}</b><br><span style="font-size:11px;color:#8899bb;">จุดที่กำหนด</span>`);
-                historyLayers.push(circle);
-            });
-
-            // ── polyline เส้นทางจริง ──
-            const routeLine = L.polyline(rec.trackPoints, {
-                color: v.color, weight: 5, opacity: 0.9, dashArray: '8,4'
-            }).addTo(historyMap);
-            historyLayers.push(routeLine);
-
-            // ── markers จุดแต่ละจุด ──
-            rec.stops.forEach((s, i) => {
-                const col = s.visited ? ['#00e676','#ffd740','#ff5252'][i] : '#ff4444';
-
-                // จุดที่กำหนด marker
-                const reqIcon = L.divIcon({
-                    html: `<div style="
-                        width:28px;height:28px;border-radius:50%;
-                        background:${col}22;border:3px solid ${col};
-                        box-shadow:0 0 12px ${col};
-                        display:flex;align-items:center;justify-content:center;
-                        font-size:14px;font-weight:900;color:${col};
-                    ">${s.visited ? '✓' : '✗'}</div>`,
-                    className: '', iconAnchor: [14,14], popupAnchor: [0,-14]
-                });
-                const reqM = L.marker([s.requiredLat, s.requiredLng], { icon: reqIcon })
-                    .addTo(historyMap)
-                    .bindPopup(`
-                        <div style="font-family:Sarabun,sans-serif;min-width:180px;">
-                            <div style="font-weight:700;font-size:14px;margin-bottom:6px;">${s.icon} ${s.name}</div>
-                            <div style="font-weight:700;color:${col};margin-bottom:6px;">
-                                ${s.visited ? '✅ ผ่านแล้ว' : '❌ ไม่ได้ผ่าน'}
-                            </div>
-                            <div style="font-size:11px;color:#8899bb;">📍 ${s.requiredLat.toFixed(5)}, ${s.requiredLng.toFixed(5)}</div>
-                            ${s.arrive !== '—' ? `<div style="font-size:12px;margin-top:4px;">🕐 ถึง ${s.arrive} · ออก ${s.depart}</div>` : ''}
-                            ${s.actualLat ? `<div style="font-size:11px;color:#8899bb;margin-top:2px;">📡 จริง: ${s.actualLat.toFixed(5)}, ${s.actualLng.toFixed(5)}</div>` : ''}
-                        </div>`);
-                historyLayers.push(reqM);
-
-                // จุดจริง + เส้นเชื่อม
-                if (s.actualLat) {
-                    const actIcon = L.divIcon({
-                        html: `<div style="width:12px;height:12px;border-radius:50%;background:${col};border:2.5px solid white;box-shadow:0 0 8px ${col};"></div>`,
-                        className: '', iconAnchor: [6,6]
-                    });
-                    const actM = L.marker([s.actualLat, s.actualLng], { icon: actIcon })
-                        .addTo(historyMap)
-                        .bindPopup(`<span style="font-family:Sarabun,sans-serif;font-size:12px;">📡 ตำแหน่งจริง<br>${s.actualLat.toFixed(5)}, ${s.actualLng.toFixed(5)}</span>`);
-                    const link = L.polyline(
-                        [[s.requiredLat, s.requiredLng],[s.actualLat, s.actualLng]],
-                        { color: col, weight: 2, dashArray: '4,4', opacity: 0.6 }
-                    ).addTo(historyMap);
-                    historyLayers.push(actM, link);
-                }
-            });
-
-            // fit bounds ให้เห็นทุกจุด
-            historyMap.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
-        }
-
-        // กลับหน้า real-time
-        function backToRealtime() {
-            document.getElementById('historyMap').style.display  = 'none';
-            document.getElementById('managerMap').style.display  = 'block';
-            document.getElementById('mapModeLabel').innerHTML    = '🟢 Real-time — รถทุกคัน';
-            document.getElementById('backToRealtimeBtn').style.display = 'none';
-            if (managerMap) managerMap.invalidateSize();
-        }
-
-    </script>
-
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ========== CONFIG ==========
+// ORS API Key (stored as const — in production use .env / server-side proxy)
+const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6Ijk5OWViNTg4YzBhNjRiZTU4YjA2YjQ4NWZjMDI1Y2NjIiwiaCI6Im11cm11cjY0In0=';
+const ORS_URL = 'https://api.openrouteservice.org/v2/directions/driving-car/geojson';
+// ORS limit: 50 waypoints per request — we'll batch
+const ORS_CHUNK = 50;
+
+// ========== ROUTE DATA ==========
+const BASE = {name:'โรงจัดการขยะ',lat:14.862939,lng:102.027903,critical:true,isBase:true};
+
+const ROUTE_1_PTS = [
+  BASE,
+  {name:'แปลงปลูกกัญชง จุดที่ 1',lat:14.862954,lng:102.032953},
+  {name:'แปลงปลูกกัญชง จุดที่ 2',lat:14.86123,lng:102.03206},
+  {name:'สถานีไฟฟ้า 2',lat:14.86242,lng:102.037158,critical:true},
+  {name:'ป้อมยามประตู 2',lat:14.863081,lng:102.038789},
+  {name:'โรงพยาบาล มทส.-หอพักแพทย์',lat:14.863917,lng:102.033408,critical:true},
+  {name:'โรงพยาบาล มทส.-ตึกโภชนาการ',lat:14.86446245,lng:102.036259,critical:true},
+  {name:'จุดรวมขยะโรงพยาบาล มทส.',lat:14.86670704,lng:102.032123,critical:true},
+  {name:'โรงพยาบาล มทส.-ศูนย์มะเร็ง',lat:14.86883409,lng:102.036483},
+  {name:'โบรอนจับยึดนิวตรอน',lat:14.865746,lng:102.028094},
+  {name:'โรงเรียนสุรวิวัฒน์ จุดที่ 1',lat:14.876348,lng:102.029428,critical:true},
+  {name:'โรงเรียนสุรวิวัฒน์ จุดที่ 2',lat:14.874892,lng:102.031966,critical:true},
+  {name:'โรงเรียนสุรวิวัฒน์ จุดที่ 3',lat:14.875346,lng:102.030283,critical:true},
+  {name:'อาคารขนส่ง จุดที่ 1',lat:14.878016,lng:102.020915,critical:true},
+  {name:'อาคารขนส่ง จุดที่ 2',lat:14.87792,lng:102.0212,critical:true},
+  {name:'อาคารขนส่ง จุดที่ 3',lat:14.87789,lng:102.02183,critical:true},
+  {name:'ศาลารอรถ-อาคารขนส่ง',lat:14.877411,lng:102.022163},
+  {name:'อาคารปฏิบัติการดิจิทัล จุดที่ 1',lat:14.877321,lng:102.01468,critical:true},
+  {name:'อาคารปฏิบัติการดิจิทัล จุดที่ 2',lat:14.878023,lng:102.014157,critical:true},
+  {name:'ลานจอดรถบรรณสาร 2',lat:14.87832422,lng:102.015304,critical:true},
+  {name:'อาคารบรรณสาร',lat:14.87919113,lng:102.016307,critical:true},
+  {name:'ศาลารอรถบรรณสาร',lat:14.879553,lng:102.015652},
+  {name:'โรงอาหารพราวแสดทอง',lat:14.88090071,lng:102.015936,critical:true},
+  {name:'เรียนรวม 2',lat:14.88115164,lng:102.015091,critical:true},
+  {name:'ร้านกาแฟ Faraday',lat:14.881272,lng:102.01545},
+  {name:'ศาลารอรถเรียนรวม',lat:14.881801,lng:102.0141},
+  {name:'เรียนรวม 1 จุดที่ 1',lat:14.882553,lng:102.015707,critical:true},
+  {name:'เรียนรวม 1 จุดที่ 2',lat:14.881171,lng:102.017635,critical:true},
+  {name:'เรียนรวม 1 จุดที่ 3',lat:14.88345,lng:102.014978,critical:true},
+  {name:'ส่วนกิจการนักศึกษา 1',lat:14.889581,lng:102.017098,critical:true},
+  {name:'ศาลารอรถ S15',lat:14.890647,lng:102.017672},
+  {name:'สุรนิเวศ 15A',lat:14.891409,lng:102.018186},
+  {name:'สุรนิเวศ 15B',lat:14.890995,lng:102.0184},
+  {name:'โรงอาหารดอนตะวัน',lat:14.890347,lng:102.017391,critical:true},
+  {name:'สุรนิเวศ 1',lat:14.89502504,lng:102.015565,critical:true},
+  {name:'อาคารอเนกประสงค์ จุดที่ 1',lat:14.89556,lng:102.01628},
+  {name:'อาคารอเนกประสงค์ จุดที่ 2',lat:14.89541,lng:102.01655},
+  {name:'สุรนิเวศ 2',lat:14.89628592,lng:102.015116,critical:true},
+  {name:'สุรนิเวศ 3',lat:14.8963972,lng:102.014616,critical:true},
+  {name:'สุรนิเวศ 4',lat:14.8967657,lng:102.014345,critical:true},
+  {name:'สุรนิเวศ 5',lat:14.89749759,lng:102.01392,critical:true},
+  {name:'สุรนิเวศ 6',lat:14.89793257,lng:102.014249,critical:true},
+  {name:'เฉลิมพระเกียรติ 80 พรรษา จุดที่ 1',lat:14.89364,lng:102.0147,critical:true},
+  {name:'เฉลิมพระเกียรติ 80 พรรษา จุดที่ 2',lat:14.89299,lng:102.01464,critical:true},
+  {name:'สุรนิเวศ 16',lat:14.89281906,lng:102.014298},
+  {name:'สุรนิเวศ 18',lat:14.89288736,lng:102.012603,critical:true},
+  {name:'สุรนิเวศ 19',lat:14.893961,lng:102.012518,critical:true},
+  {name:'สุรนิเวศ 20',lat:14.893998,lng:102.012597,critical:true},
+  {name:'สุรนิเวศ 21',lat:14.893148,lng:102.010705,critical:true},
+  {name:'สุรนิเวศ 22',lat:14.893192,lng:102.010723,critical:true},
+  {name:'Learning Park จุดที่ 1',lat:14.89479,lng:102.01335},
+  {name:'Learning Park จุดที่ 2',lat:14.8948,lng:102.01291},
+  {name:'Learning Park จุดที่ 3',lat:14.89469,lng:102.01279},
+  {name:'หน่วยปฏิบัติการปฐมภูมิ รพ.มทส',lat:14.89506687,lng:102.013574,critical:true},
+  {name:'มินิมาร์ท ฟาร์ม',lat:14.89045129,lng:102.005195,critical:true},
+  {name:'สำนักงานฟาร์ม',lat:14.88967,lng:102.00482,critical:true},
+  {name:'เกษตรวิวัฒน์',lat:14.88873446,lng:102.0045,critical:true},
+  {name:'โรงผลิตอาหารสัตว์',lat:14.88939212,lng:102.002586,critical:true},
+  {name:'สุขนิวาส 1',lat:14.88606402,lng:102.008938,critical:true},
+  {name:'สุขนิวาส 2',lat:14.88555593,lng:102.009116,critical:true},
+  {name:'สุขนิวาส 3',lat:14.88551,lng:102.01053,critical:true},
+  {name:'สุขนิวาส 4',lat:14.88472191,lng:102.009085,critical:true},
+  {name:'สุขนิวาส 5',lat:14.88429066,lng:102.01031,critical:true},
+  {name:'สุขนิวาส 6',lat:14.88578555,lng:102.0115,critical:true},
+  {name:'สุขนิวาส 7',lat:14.88421227,lng:102.011838,critical:true},
+  {name:'สุขนิวาส 8',lat:14.88624662,lng:102.011415,critical:true},
+  {name:'สัตว์ทดลอง',lat:14.875691,lng:102.008908,critical:true},
+  {name:'สถานีไฟฟ้าย่อย',lat:14.874195,lng:102.009501,critical:true},
+  BASE
+];
+
+const ROUTE_2_PTS = [
+  BASE,
+  {name:'ภูมิทัศน์ (ใหม่)',lat:14.86903,lng:102.02135,critical:true},
+  {name:'สวนพฤกษศาสตร์',lat:14.86991,lng:102.022113,critical:true},
+  {name:'อุทยานผีเสื้อ',lat:14.871074,lng:102.022713},
+  {name:'ซินโครตรอน',lat:14.872731,lng:102.023232},
+  {name:'อาคารสุรพัฒน์ 2',lat:14.8754,lng:102.02286,critical:true},
+  {name:'อาคารสุรพัฒน์ 3',lat:14.874078,lng:102.022316},
+  {name:'เรือนไทย',lat:14.875346,lng:102.021912},
+  {name:'อาคารสุรพัฒน์ 1 จุดที่ 1',lat:14.87584,lng:102.02302,critical:true},
+  {name:'อาคารสุรพัฒน์ 1 จุดที่ 2',lat:14.87572,lng:102.02284,critical:true},
+  {name:'เซเวน-อีเลฟเวน เทคโนธานี จุดที่ 1',lat:14.876072,lng:102.022745,critical:true},
+  {name:'เซเวน-อีเลฟเวน เทคโนธานี จุดที่ 2',lat:14.876125,lng:102.022341,critical:true},
+  {name:'อาคารสุรสัมนาคาร',lat:14.876533,lng:102.024665,critical:true},
+  {name:'โรงอาหารครัวท่านทาว',lat:14.877234,lng:102.02026,critical:true},
+  {name:'อาคารวิจัยมันสำปะหลัง',lat:14.874527,lng:102.020047},
+  {name:'หอดูดาว',lat:14.87414,lng:102.027598},
+  {name:'กาญจนาภิเษก',lat:14.873602,lng:102.026147,critical:true},
+  {name:'อุทยานวิทยาศาสตร์',lat:14.87176,lng:102.01974,critical:true},
+  {name:'อาคารงานภูมิทัศน์ (เก่า)',lat:14.87273,lng:102.01824,critical:true},
+  {name:'เครื่องมือฯ 9',lat:14.87516,lng:102.01613,critical:true},
+  {name:'เครื่องมือฯ 11',lat:14.87561,lng:102.01656,critical:true},
+  {name:'เครื่องมือฯ 12',lat:14.873347,lng:102.01454,critical:true},
+  {name:'เครื่องมือฯ 10',lat:14.876915,lng:102.015231,critical:true},
+  {name:'เครื่องมือฯ 6 และเทคโนวัสดุ',lat:14.875158,lng:102.017524,critical:true},
+  {name:'เครื่องมือฯ 5',lat:14.876734,lng:102.016839,critical:true},
+  {name:'เครื่องมือฯ 3',lat:14.8768643,lng:102.01825,critical:true},
+  {name:'เครื่องมือฯ 2',lat:14.876625,lng:102.01834,critical:true},
+  {name:'เครื่องมือฯ 4',lat:14.877436,lng:102.016732,critical:true},
+  {name:'เครื่องมือฯ 1',lat:14.877715,lng:102.017417,critical:true},
+  {name:'อาคารวิชาการ 1',lat:14.878152,lng:102.018926,critical:true},
+  {name:'อาคารวิจัย',lat:14.878043,lng:102.019042,critical:true},
+  {name:'อาคารวิชาการ 2 จุดที่ 1',lat:14.87943,lng:102.02011,critical:true},
+  {name:'อาคารวิชาการ 2 จุดที่ 2',lat:14.87946,lng:102.0196,critical:true},
+  {name:'โรงอาหารเด่นทองกวาว',lat:14.879128,lng:102.020349,critical:true},
+  {name:'อาคารบริหาร',lat:14.88013,lng:102.02042,critical:true},
+  {name:'อาคารส่วนอาคารสถานที่',lat:14.87975,lng:102.02205,critical:true},
+  {name:'อาคารบริการสถานที่และกิจกรรม',lat:14.87978,lng:102.02124,critical:true},
+  {name:'อาคารรักษาความปลอดภัย จุดที่ 1',lat:14.883761,lng:102.02421},
+  {name:'อาคารรักษาความปลอดภัย จุดที่ 2',lat:14.883344,lng:102.024802},
+  {name:'ส่วนกิจการนักศึกษา 2',lat:14.88656,lng:102.01711,critical:true},
+  {name:'สนามเปตอง',lat:14.8852,lng:102.01685,critical:true},
+  {name:'สนามกีฬาสุรเริงไชย จุดที่ 1',lat:14.886019,lng:102.01908,critical:true},
+  {name:'สนามกีฬาสุรเริงไชย จุดที่ 2',lat:14.886347,lng:102.018367,critical:true},
+  {name:'กีฬาภิรมย์ แบตมินตัน จุดที่ 1',lat:14.886362,lng:102.015663,critical:true},
+  {name:'กีฬาภิรมย์ แบตมินตัน จุดที่ 2',lat:14.886342,lng:102.01558,critical:true},
+  {name:'สุรพลาคารีฑาสถาน',lat:14.887047,lng:102.017691,critical:true},
+  {name:'สุรนิเวศ 7/อาคารบริการ',lat:14.89713,lng:102.011243,critical:true},
+  {name:'สุรนิเวศ 8',lat:14.89674,lng:102.010574,critical:true},
+  {name:'สุรนิเวศ 9/อาคารบริการ',lat:14.896464,lng:102.009932,critical:true},
+  {name:'สุรนิเวศ 10',lat:14.8965557,lng:102.00972,critical:true},
+  {name:'สุรนิเวศ 12/อาคารบริการ',lat:14.897603,lng:102.010749,critical:true},
+  {name:'สุรนิเวศ 11',lat:14.89797,lng:102.011122,critical:true},
+  {name:'โรงกรองน้ำประปา',lat:14.900384,lng:102.009308,critical:true},
+  {name:'อาคารหน่วยสิ่งแวดล้อม',lat:14.90274,lng:102.009668,critical:true},
+  {name:'ห้องประชุมรัชดาพัฒน์',lat:14.899768,lng:102.009965,critical:true},
+  {name:'โรงอาหารกาสะลองคำ',lat:14.896759,lng:102.012427,critical:true},
+  {name:'อ่างสุระ จุดที่ 1',lat:14.87749,lng:102.01247},
+  {name:'อ่างสุระ จุดที่ 2',lat:14.87685,lng:102.00889},
+  {name:'อ่างสุระ จุดที่ 3',lat:14.88074,lng:102.01095},
+  BASE
+];
+
+const VEHICLES = [
+  {id:0,plate:'83-8715',name:'ทะเบียน 83-8715',icon:'🚛',color:'#00c9a7',colorCls:'v1',route:ROUTE_1_PTS,driverKey:'driver1'},
+  {id:1,plate:'83-8716',name:'ทะเบียน 83-8716',icon:'🚛',color:'#ff7043',colorCls:'v2',route:ROUTE_2_PTS,driverKey:'driver2'},
+];
+
+const USERS = {
+  manager:{pass:'1234',role:'manager',display:'ผู้จัดการ มทส.'},
+  driver1:{pass:'1234',role:'driver',display:'คนขับ 83-8715',vid:0},
+  driver2:{pass:'1234',role:'driver',display:'คนขับ 83-8716',vid:1},
+};
+
+// ========== STATE ==========
+let currentRole='manager', currentUser=null;
+let navMap=null, managerMap=null, historyMap=null;
+let driverMarker=null, navInterval=null;
+let navWpIdx=0, navAnimStep=0, navRouteCoords=[];
+let mgrMarkers=[], mgrRouteLines=[], histLayers=[];
+let sidebarOpen=false;
+let selHistVehicle=null, selHistDate=null;
+let currentVehicle=null;
+// Shared real-time state (simulates GPS stream between driver and manager)
+const RT_STATE = {
+  0:{lat:BASE.lat,lng:BASE.lng,wpIdx:0,total:ROUTE_1_PTS.length,stopName:'โรงจัดการขยะ',active:false},
+  1:{lat:BASE.lat,lng:BASE.lng,wpIdx:0,total:ROUTE_2_PTS.length,stopName:'โรงจัดการขยะ',active:false},
+};
+let mgrRtMarkers={0:null,1:null};
+let mgrRtInterval=null;
+
+// ========== ORS API ==========
+// Decode ORS geometry (GeoJSON LineString from v2 endpoint)
+function extractGeoJSONCoords(geojson) {
+  const coords = [];
+  if (geojson && geojson.features) {
+    geojson.features.forEach(f => {
+      if (f.geometry && f.geometry.coordinates) {
+        f.geometry.coordinates.forEach(c => coords.push([c[1],c[0]]));
+      }
+    });
+  }
+  return coords;
+}
+
+async function fetchORSRoute(waypoints) {
+  // ORS max 50 waypoints per call — chunk and concatenate
+  const allCoords = [];
+  let totalDist = 0, totalDuration = 0;
+
+  // Build chunks of ORS_CHUNK max, overlapping by 1 point
+  const chunks = [];
+  for (let i=0; i<waypoints.length-1; i+=ORS_CHUNK-1) {
+    chunks.push(waypoints.slice(i, Math.min(i+ORS_CHUNK, waypoints.length)));
+    if (i+ORS_CHUNK >= waypoints.length) break;
+  }
+
+  for (const chunk of chunks) {
+    const body = {
+      coordinates: chunk.map(p => [p.lng, p.lat]),
+      preference: 'recommended',
+      units: 'km',
+      geometry: true,
+      instructions: false,
+    };
+    const res = await fetch(ORS_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization': ORS_API_KEY},
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(`ORS ${res.status}: ${err.slice(0,120)}`);
+    }
+    const data = await res.json();
+    if (data.features && data.features[0]) {
+      const feat = data.features[0];
+      const coords = feat.geometry.coordinates.map(c => [c[1],c[0]]);
+      // Avoid duplicating the overlap point
+      if (allCoords.length > 0) coords.shift();
+      allCoords.push(...coords);
+      if (feat.properties && feat.properties.summary) {
+        totalDist += feat.properties.summary.distance || 0;
+        totalDuration += feat.properties.summary.duration || 0;
+      }
+    }
+  }
+  return {coords: allCoords, distance: totalDist, duration: totalDuration};
+}
+
+// Human-readable duration
+function fmtDuration(secs) {
+  const h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60);
+  return h > 0 ? `${h} ชม. ${m} นาที` : `${m} นาที`;
+}
+
+// Haversine fallback distance
+function hvDist(a,b) {
+  const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
+  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function routeDist(pts) { let d=0; for(let i=0;i<pts.length-1;i++) d+=hvDist(pts[i],pts[i+1]); return d; }
+
+// ========== DATA VALIDATION ==========
+function validateRoutes() {
+  const warns=[];
+  VEHICLES.forEach(v => {
+    const seen=new Map();
+    v.route.forEach((p,i) => {
+      if(p.isBase) return;
+      const k=`${p.lat.toFixed(5)}_${p.lng.toFixed(5)}`;
+      if(seen.has(k)) warns.push(`${v.plate}: จุด "${p.name}" ซ้ำ`);
+      else seen.set(k,p.name);
+      if(isNaN(p.lat)||p.lat<13||p.lat>16||isNaN(p.lng)||p.lng<100||p.lng>105)
+        warns.push(`${v.plate}: พิกัดผิดปกติ "${p.name}"`);
+    });
+  });
+  return warns;
+}
+
+// ========== LOGIN ==========
+let currentRole_sel='manager';
+function selectRole(r) {
+  currentRole_sel=r;
+  document.getElementById('roleManager').classList.toggle('active',r==='manager');
+  document.getElementById('roleDriver').classList.toggle('active',r==='driver');
+}
+function login() {
+  const u=document.getElementById('username').value.trim();
+  const p=document.getElementById('password').value;
+  const err=document.getElementById('errMsg');
+  const usr=USERS[u];
+  if(!usr||usr.pass!==p||usr.role!==currentRole_sel){err.style.display='block';return;}
+  err.style.display='none';
+  currentUser={...usr,uname:u};
+  document.getElementById('loginPage').style.display='none';
+  if(currentRole_sel==='driver'){
+    const app=document.getElementById('driverApp');
+    app.classList.add('visible');
+    document.getElementById('driverLabel').textContent=usr.display;
+    initDriverPage();
+  } else {
+    const app=document.getElementById('managerApp');
+    app.classList.add('visible');
+    document.getElementById('managerLabel').textContent=usr.display;
+    setTimeout(initManagerMap,120);
+  }
+}
+function logout(){location.reload();}
+
+// ========== DRIVER ==========
+function initDriverPage() {
+  const grid=document.getElementById('carGrid');
+  grid.innerHTML='';
+  VEHICLES.forEach(v => {
+    const mine=currentUser.vid===v.id;
+    const d=document.createElement('div');
+    d.className='car-card'+(mine?'':' locked');
+    d.id='cc'+v.id;
+    d.innerHTML=`<div class="car-icon">${v.icon}</div>
+      <div class="car-name">${v.name}</div>
+      <div class="car-plate">${v.plate}</div>
+      <div class="pill ${mine?v.colorCls:'red'}" style="margin-top:6px;">${mine?'✅ ของคุณ':'🔒 ไม่ใช่'}</div>`;
+    if(mine) d.onclick=()=>selectCar(v.id);
+    grid.appendChild(d);
+  });
+}
+function selectCar(id) {
+  document.querySelectorAll('.car-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById('cc'+id).classList.add('selected');
+  currentVehicle=VEHICLES.find(v=>v.id===id);
+  document.getElementById('btnStart').disabled=false;
+  const sec=document.getElementById('routeSection');
+  sec.classList.remove('hidden');
+  const r=currentVehicle.route;
+  const critCount=r.filter(p=>p.critical&&!p.isBase).length;
+  document.getElementById('routeInfoCard').innerHTML=`
+    <div class="ic-row"><span class="ic-key">รถ</span><span class="ic-val">${currentVehicle.name}</span></div>
+    <div class="ic-row"><span class="ic-key">จุดทั้งหมด</span><span class="ic-val">${r.length-2} จุด</span></div>
+    <div class="ic-row"><span class="ic-key">จุดสำคัญ</span><span class="ic-val">${critCount} จุด</span></div>
+    <div class="ic-row"><span class="ic-key">ระยะ (ประมาณ)</span><span class="ic-val">${routeDist(r).toFixed(1)} กม.</span></div>
+    <div class="ic-row" style="border:none;"><span class="ic-key">เส้นทาง</span><span class="pill ${currentVehicle.colorCls}">ORS Real Road</span></div>
+  `;
+}
+
+async function startNav() {
+  if(!currentVehicle) return;
+
+  // Hide driver UI, show fullscreen map
+  document.getElementById('driverBody').style.display = 'none';
+  document.getElementById('driverTopbar').style.display = 'none';
+  document.getElementById('navMap').style.display = 'block';
+  document.getElementById('navHUD').style.display = 'block';
+  document.getElementById('btnExitNav').style.display = 'block';
+
+  const loader = document.getElementById('navLoading');
+  loader.style.display = 'flex';
+
+  const route = currentVehicle.route;
+  navWpIdx = 0; navAnimStep = 0; navRouteCoords = [];
+  navCoordIdx = 0;
+
+  if(!navMap) {
+    navMap = L.map('navMap', {zoomControl:true}).setView([route[0].lat, route[0].lng], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom:19
+    }).addTo(navMap);
+  }
+  // Force Leaflet to recalculate fullscreen size
+  setTimeout(() => navMap.invalidateSize(), 80);
+
+  // Fetch ORS real-road route
+  let orsDist = 0, orsDur = 0, orsOk = false;
+  try {
+    const result = await fetchORSRoute(route);
+    navRouteCoords = result.coords;
+    orsDist = result.distance; orsDur = result.duration; orsOk = true;
+    L.polyline(navRouteCoords, {color:currentVehicle.color, weight:6, opacity:.9}).addTo(navMap);
+    document.getElementById('orsChip').style.display = 'block';
+    document.getElementById('orsChip').innerHTML =
+      `<span style="color:var(--green);">✓ ORS</span>&nbsp;
+       <b style="color:var(--primary);">${orsDist.toFixed(1)} กม.</b>&nbsp;·&nbsp;
+       <span style="color:var(--muted);">${fmtDuration(orsDur)}</span>`;
+  } catch(e) {
+    console.warn('ORS fallback:', e.message);
+    navRouteCoords = route.map(p => [p.lat, p.lng]);
+    L.polyline(navRouteCoords, {color:currentVehicle.color, weight:5, dashArray:'8,5', opacity:.75}).addTo(navMap);
+    document.getElementById('orsChip').style.display = 'block';
+    document.getElementById('orsChip').innerHTML =
+      `<span style="color:var(--gold);">⚠ เส้นตรง</span>&nbsp;~${routeDist(route).toFixed(1)} กม.`;
+  }
+
+  // Waypoint markers
+  route.forEach(p => {
+    const isBase = p.isBase, isCrit = p.critical && !isBase;
+    const sz = isBase ? 18 : isCrit ? 12 : 7;
+    const col = isBase ? '#ff4d6d' : isCrit ? '#f5c842' : '#4d6b8a';
+    L.marker([p.lat, p.lng], {icon: L.divIcon({
+      html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${col};border:2px solid white;box-shadow:0 0 ${isBase?14:8}px ${col};"></div>`,
+      className:'', iconAnchor:[sz/2, sz/2]
+    })}).addTo(navMap).bindPopup(`<b>${p.name}</b>${isCrit?'<br><span style="color:#f5c842;font-size:11px;">⭐ จุดสำคัญ</span>':''}`);
+  });
+
+  navMap.fitBounds(navRouteCoords, {padding:[60, 60]});
+  loader.style.display = 'none';
+
+  // Driver marker
+  const carIcon = L.divIcon({
+    html:`<div style="font-size:30px;filter:drop-shadow(0 3px 10px rgba(0,0,0,.7))">${currentVehicle.icon}</div>`,
+    className:'', iconAnchor:[15,15]
+  });
+  if(driverMarker) driverMarker.remove();
+  driverMarker = L.marker([navRouteCoords[0][0], navRouteCoords[0][1]], {icon:carIcon}).addTo(navMap);
+
+  updateNavDest();
+  RT_STATE[currentVehicle.id].active = true;
+  if(navInterval) clearInterval(navInterval);
+  navInterval = setInterval(animateNav, 1200);
+}
+
+function exitNav() {
+  if(navInterval) clearInterval(navInterval);
+  navInterval = null;
+  navCoordIdx = 0;
+  if(driverMarker){ driverMarker.remove(); driverMarker = null; }
+  document.getElementById('navMap').style.display = 'none';
+  document.getElementById('navHUD').style.display = 'none';
+  document.getElementById('btnExitNav').style.display = 'none';
+  document.getElementById('orsChip').style.display = 'none';
+  document.getElementById('driverBody').style.display = 'flex';
+  document.getElementById('driverTopbar').style.display = 'flex';
+  RT_STATE[currentVehicle.id].active = false;
+  // Reset start button
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStart').textContent = '🚀 เริ่มการเดินทาง';
+}
+
+let navCoordIdx = 0;
+function animateNav() {
+  const route = currentVehicle.route;
+  if(navCoordIdx >= navRouteCoords.length - 1){
+    clearInterval(navInterval);
+    document.getElementById('destName').textContent = '🎉 ถึงจุดหมายแล้ว!';
+    RT_STATE[currentVehicle.id].active = false;
+    return;
+  }
+  navCoordIdx++;
+  const [lat, lng] = navRouteCoords[navCoordIdx];
+  driverMarker.setLatLng([lat, lng]);
+  navMap.panTo([lat, lng], {animate:true, duration:1});
+
+  // Closest waypoint
+  let closest = 0, closestDist = 9999;
+  route.forEach((p, i) => {
+    const d = Math.abs(p.lat - lat) + Math.abs(p.lng - lng);
+    if(d < closestDist){ closestDist = d; closest = i; }
+  });
+  const pct = Math.round((navCoordIdx / navRouteCoords.length) * 100);
+  RT_STATE[currentVehicle.id] = {
+    lat, lng, active:true,
+    wpIdx: closest, total: route.length,
+    stopName: route[closest] ? route[closest].name : '—',
+    pct
+  };
+
+  document.getElementById('speedVal').textContent = Math.floor(20 + Math.random() * 25);
+  document.getElementById('stopIdx').textContent = closest;
+  document.getElementById('destName').textContent =
+    closest < route.length - 1 ? route[Math.min(closest + 1, route.length - 1)].name : '🏁 จบเส้นทาง';
+}
+
+// ========== MANAGER MAP ==========
+async function initManagerMap() {
+  // Validation
+  const warns=validateRoutes();
+  if(warns.length){
+    document.getElementById('warnBox').classList.remove('hidden');
+    document.getElementById('warnList').innerHTML=warns.map(w=>`<div class="warn-item">⚠️ ${w}</div>`).join('');
+  }
+
+  // Stat cards
+  document.getElementById('totalPts').textContent=VEHICLES.reduce((a,v)=>a+v.route.length-2,0);
+  document.getElementById('critPts').textContent=VEHICLES.reduce((a,v)=>a+v.route.filter(p=>p.critical&&!p.isBase).length,0);
+
+  // Vehicle status
+  document.getElementById('vStatusCards').innerHTML=VEHICLES.map(v=>`
+    <div style="background:var(--bg3);border:1px solid ${v.color}33;border-left:3px solid ${v.color};border-radius:12px;padding:12px;margin-bottom:6px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:20px;">${v.icon}</span>
+        <div><div style="font-weight:700;font-size:13px;">${v.name}</div>
+          <div class="mono" style="font-size:10px;color:var(--muted);">${v.plate}</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">จุด: <b style="color:var(--text);">${v.route.length-2}</b> · ระยะ: <b style="color:${v.color};">${routeDist(v.route).toFixed(1)} กม.</b></div>
+    </div>`).join('');
+
+  // Leaflet map
+  managerMap=L.map('managerMap',{zoomControl:true}).setView([14.882,102.018],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap',maxZoom:19
+  }).addTo(managerMap);
+  setTimeout(()=>managerMap.invalidateSize(),200);
+  setTimeout(()=>managerMap.invalidateSize(),600);
+  window.addEventListener('resize',()=>{if(managerMap)managerMap.invalidateSize();});
+
+  // ORS status indicator
+  document.getElementById('orsStatusBox').innerHTML=`
+    <div class="ors-status" id="orsStatusEl">
+      <div class="spinner" style="width:16px;height:16px;border-width:2px;"></div>
+      <span style="color:var(--muted);">กำลังโหลดเส้นทางจริงจาก OpenRouteService...</span>
+    </div>`;
+
+  // Draw waypoint markers first (fast)
+  VEHICLES.forEach(v => {
+    v.route.forEach(p => {
+      const isBase=p.isBase, isCrit=p.critical&&!isBase;
+      if(!isBase && !isCrit) return; // only draw critical + base on manager for clarity
+      const sz=isBase?18:11; const col=isBase?'#ff4d6d':'#f5c842';
+      const m=L.marker([p.lat,p.lng],{icon:L.divIcon({
+        html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${col};border:2px solid white;box-shadow:0 0 ${isBase?14:7}px ${col};"></div>`,
+        className:'',iconAnchor:[sz/2,sz/2]
+      })}).addTo(managerMap)
+        .bindPopup(`<div>
+          <b style="font-size:13px;">${p.name}</b><br>
+          ${isBase?'<span style="color:#ff9aaa;font-weight:700;">🏭 จุดเริ่ม/สิ้นสุด</span>':''}
+          ${isCrit?'<span style="color:#f5c842;font-size:11px;">⭐ จุดสำคัญ</span>':''}
+          <br><span style="font-size:10px;color:#6b82a8;font-family:monospace;">${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</span>
+          <br><span class="pill ${v.colorCls}" style="margin-top:6px;display:inline-flex;">${v.plate}</span>
+        </div>`);
+      mgrMarkers.push(m);
+    });
+  });
+  managerMap.fitBounds([...ROUTE_1_PTS,...ROUTE_2_PTS].map(p=>[p.lat,p.lng]),{padding:[24,24]});
+
+  // Fetch ORS routes async
+  const orsResults=[];
+  for(const v of VEHICLES){
+    try{
+      const r=await fetchORSRoute(v.route);
+      const line=L.polyline(r.coords,{color:v.color,weight:5,opacity:.8}).addTo(managerMap);
+      line.bringToFront();
+      mgrRouteLines.push(line);
+      orsResults.push({v,dist:r.distance,dur:r.duration,ok:true});
+    } catch(e) {
+      console.warn(`ORS for ${v.plate} failed:`,e.message);
+      // Fallback straight lines
+      const line=L.polyline(v.route.map(p=>[p.lat,p.lng]),{color:v.color,weight:4,dashArray:'8,5',opacity:.6}).addTo(managerMap);
+      mgrRouteLines.push(line);
+      orsResults.push({v,dist:routeDist(v.route),dur:null,ok:false});
+    }
+  }
+
+  // Update distances
+  let total=0;
+  orsResults.forEach(r => {
+    const el=document.getElementById(r.v.id===0?'d1val':'d2val');
+    const suffix=r.ok?` <span style="font-size:10px;color:#00e676;">✓ ORS</span>`:`<span style="font-size:10px;color:#f5c842;"> ~ประมาณ</span>`;
+    el.innerHTML=`${r.dist.toFixed(1)} กม.${suffix}${r.dur?` · ${fmtDuration(r.dur)}`:''}`;
+    total+=r.dist;
+  });
+  document.getElementById('dtotal').textContent=total.toFixed(1)+' กม.';
+
+  const allOk=orsResults.every(r=>r.ok);
+  document.getElementById('orsStatusEl').innerHTML=allOk
+    ?`<span style="color:var(--green);">✅ OpenRouteService — เส้นทางถนนจริง โหลดสำเร็จ</span>`
+    :`<span style="color:var(--gold);">⚠️ ORS บางส่วนใช้เส้นตรงแทน (ตรวจสอบ API Key / quota)</span>`;
+
+  // Real-time vehicle tracking (manager view)
+  startManagerRealtime();
+}
+
+function startManagerRealtime(){
+  // Create RT markers for both vehicles
+  VEHICLES.forEach(v => {
+    const icon=L.divIcon({
+      html:`<div style="position:relative;width:44px;height:44px;">
+        <div style="position:absolute;inset:0;border-radius:50%;background:${v.color}25;border:2px solid ${v.color};animation:ripple 2s ease-out infinite;"></div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;">${v.icon}</div>
+        <div style="position:absolute;top:-2px;right:-2px;width:11px;height:11px;border-radius:50%;background:#00e676;border:2px solid var(--bg2);"></div>
+      </div>`,
+      className:'',iconAnchor:[22,22]
+    });
+    mgrRtMarkers[v.id]=L.marker([BASE.lat,BASE.lng],{icon,zIndexOffset:1000})
+      .addTo(managerMap)
+      .bindPopup(`<b>${v.icon} ${v.name}</b><br><span class="pill ${v.colorCls}">Real-time</span>`);
+  });
+
+  // Poll RT_STATE every 2s and update manager map
+  mgrRtInterval=setInterval(()=>{
+    VEHICLES.forEach(v => {
+      const st=RT_STATE[v.id];
+      if(mgrRtMarkers[v.id]){
+        mgrRtMarkers[v.id].setLatLng([st.lat,st.lng]);
+        mgrRtMarkers[v.id].setPopupContent(`
+          <div style="font-family:'Sarabun',sans-serif;min-width:170px;">
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px;">${v.icon} ${v.name}</div>
+            <div class="pill ${v.colorCls}" style="margin-bottom:6px;">${st.active?'🟢 กำลังวิ่ง':'⚪ จอดอยู่'}</div>
+            <div style="font-size:12px;color:#8899bb;">📍 จุดปัจจุบัน:</div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:4px;">${st.stopName}</div>
+            <div style="font-size:11px;color:#8899bb;">จุดที่ ${st.wpIdx} / ${st.total}</div>
+            <div style="font-size:10px;font-family:monospace;color:#4d6b8a;margin-top:4px;">${st.lat.toFixed(6)}, ${st.lng.toFixed(6)}</div>
+          </div>`);
+      }
+      // Update HUD
+      const stopEl=document.getElementById('rtStop'+v.id);
+      const metaEl=document.getElementById('rtMeta'+v.id);
+      const progEl=document.getElementById('rtProg'+v.id);
+      if(stopEl) stopEl.textContent=st.stopName;
+      if(metaEl) metaEl.textContent=`จุดที่ ${st.wpIdx} / ${st.total-1} ${st.active?'· กำลังวิ่ง':'· จอด'}`;
+      if(progEl) progEl.style.width=(st.pct||0)+'%';
+    });
+  },2000);
+}
+
+// ========== SIDEBAR / TABS ==========
+function toggleSidebar(){
+  sidebarOpen=!sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('open',sidebarOpen);
+  document.getElementById('backdrop').classList.toggle('on',sidebarOpen);
+  document.body.style.overflow=sidebarOpen?'hidden':'';
+}
+function switchTab(t){
+  ['t1','t2','t3'].forEach(id=>{
+    document.getElementById(id+'btn').classList.toggle('active',id===t);
+    document.getElementById(id+'panel').classList.toggle('active',id===t);
+  });
+}
+
+// ========== ROUTE DETAIL ==========
+function showRouteDetail(){
+  const sel=document.getElementById('routeDrop').value;
+  const card=document.getElementById('routeDetailCard');
+  if(!sel){card.innerHTML='';return;}
+  const v=VEHICLES[parseInt(sel)];
+  const crit=v.route.filter(p=>p.critical&&!p.isBase);
+  card.innerHTML=`
+    <div style="background:var(--bg3);border-radius:10px;padding:12px;margin-top:8px;">
+      <div class="pill ${v.colorCls}" style="margin-bottom:8px;">${v.name}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${v.route.length-2} จุด · ${routeDist(v.route).toFixed(1)} กม. (ประมาณ)</div>
+      <div class="section-label">⭐ จุดสำคัญ ${crit.length} จุด</div>
+      <div class="crit-list" style="margin-top:6px;">${crit.map((p,i)=>`
+        <div class="crit-item">
+          <span class="crit-num">${i+1}</span>
+          <span class="crit-name">${p.name}</span>
+          <span class="crit-coord">${p.lat.toFixed(4)}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  if(managerMap) managerMap.fitBounds(v.route.map(p=>[p.lat,p.lng]),{padding:[30,30]});
+}
+
+// ========== HISTORY ==========
+function generateHistory(){
+  const db={}, today=new Date();
+  VEHICLES.forEach(v=>{
+    db[v.id]={};
+    for(let d=0;d<7;d++){
+      const dt=new Date(today); dt.setDate(today.getDate()-d);
+      const key=dt.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
+      const critPts=v.route.filter(p=>p.critical&&!p.isBase);
+      const stops=critPts.map(wp=>{
+        const vis=d===0?(Math.random()>.05):(Math.random()>.2);
+        const h=7+Math.floor(Math.random()*3), m=String(Math.floor(Math.random()*50)).padStart(2,'0');
+        const dur=vis?8+Math.floor(Math.random()*20):0;
+        return{name:wp.name,requiredLat:wp.lat,requiredLng:wp.lng,
+          visited:vis,arrive:vis?`${h}:${m}`:'—',
+          depart:vis?`${h}:${String(parseInt(m)+dur).padStart(2,'0')}`:'—',
+          duration:vis?`${dur} นาที`:'—',
+          actualLat:vis?wp.lat+(Math.random()-.5)*.0005:null,
+          actualLng:vis?wp.lng+(Math.random()-.5)*.0005:null};
+      });
+      const track=[];
+      if(stops.some(s=>s.visited)){
+        track.push([BASE.lat,BASE.lng]);
+        stops.forEach(s=>{if(s.visited&&s.actualLat) track.push([s.actualLat,s.actualLng]);});
+        track.push([BASE.lat,BASE.lng]);
+      }
+      const missed=stops.filter(s=>!s.visited);
+      db[v.id][key]={key,stops,track,missedStops:missed,
+        trips:stops.filter(s=>s.visited).length,
+        totalTime:`${Math.floor(2+Math.random()*2)} ชม. ${Math.floor(Math.random()*50)} นาที`};
+    }
+  });
+  return db;
+}
+const HIST_DB=generateHistory();
+
+function get7Days(){
+  const days=[],today=new Date(),dn=['อา','จ','อ','พ','พฤ','ศ','ส'];
+  for(let d=0;d<7;d++){
+    const dt=new Date(today); dt.setDate(today.getDate()-d);
+    const label=d===0?'วันนี้':d===1?'เมื่อวาน':`${dn[dt.getDay()]} ${dt.getDate()}`;
+    const key=dt.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'});
+    days.push({label,key});
+  }
+  return days;
+}
+
+function onHistChange(){
+  const sel=document.getElementById('histDrop').value;
+  document.getElementById('histDetail').classList.add('hidden');
+  if(!sel){document.getElementById('histDayPicker').classList.add('hidden');return;}
+  selHistVehicle=parseInt(sel);
+  const picker=document.getElementById('histDayPicker');
+  picker.classList.remove('hidden');
+  const chips=document.getElementById('dayChips');
+  chips.innerHTML=get7Days().map((d,i)=>
+    `<button class="day-chip ${i===0?'active':''}" onclick="selDay('${d.key}',this)">${d.label}</button>`
+  ).join('');
+  selDay(get7Days()[0].key,chips.children[0]);
+}
+function selDay(key,el){
+  document.querySelectorAll('.day-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  selHistDate=key;
+  renderHistDetail();
+}
+function renderHistDetail(){
+  if(selHistVehicle===null||!selHistDate) return;
+  const v=VEHICLES[selHistVehicle];
+  const rec=HIST_DB[v.id][selHistDate];
+  if(!rec) return;
+  const el=document.getElementById('histDetail');
+  el.classList.remove('hidden');
+  el.style.display='flex';
+
+  // Build inner
+  const missedHtml=rec.missedStops.length?`
+    <div class="missed-box">
+      <div class="missed-title">⚠️ จุดที่ไม่ผ่าน ${rec.missedStops.length} จุด</div>
+      ${rec.missedStops.map(s=>`
+        <div class="missed-item">
+          <div style="flex:1;"><div class="missed-name">${s.name}</div>
+            <div class="missed-coord">${s.requiredLat.toFixed(5)}, ${s.requiredLng.toFixed(5)}</div></div>
+          <span class="missed-tag">MISSED</span>
+        </div>`).join('')}
+    </div>`:'';
+
+  const stopsHtml=`<div class="hist-stop-list">${rec.stops.map((s,i)=>{
+    const col=s.visited?'#00e676':'#ff4d6d';
+    return `<div class="hist-stop">
+      <div class="hs-dot-wrap"><div class="hs-dot" style="background:${col};box-shadow:0 0 6px ${col};"></div>${i<rec.stops.length-1?'<div class="hs-line"></div>':''}</div>
+      <div class="hs-content"><div class="hs-name" style="color:${s.visited?'inherit':col};">${s.name}${s.visited?'':' <span style="font-size:10px;background:rgba(255,77,109,.15);padding:1px 6px;border-radius:4px;">❌</span>'}</div>
+        <div class="hs-meta"><span>🕐 ${s.arrive}</span>${s.depart!=='—'?`<span>🚀 ${s.depart}</span>`:''}<span>⏱ ${s.duration}</span></div>
+      </div></div>`}).join('')}</div>`;
+
+  // Backup log 7 days
+  const bkRows=[];
+  get7Days().forEach(d=>{
+    const r=HIST_DB[v.id]?.[d.key];
+    if(r) r.missedStops.forEach(s=>bkRows.push({day:d.label,s}));
+  });
+  const bkHtml=bkRows.length?bkRows.map(r=>`
+    <div class="bk-row"><div class="bk-date">${r.day}</div>
+      <div class="bk-stop"><b>${r.s.name}</b>
+        <span class="bk-coord">${r.s.requiredLat.toFixed(5)}, ${r.s.requiredLng.toFixed(5)}</span></div>
+      <span class="bk-tag">MISSED</span></div>`)
+    .join(''):`<div class="backup-empty">✅ ไม่มีจุดที่ขาด</div>`;
+
+  el.innerHTML=`
+    <div class="hist-header">
+      <span style="font-size:24px;">${v.icon}</span>
+      <div style="flex:1;"><div style="font-weight:700;">${v.name}</div><div style="font-size:11px;color:var(--muted);">📅 ${rec.key}</div></div>
+      <div style="text-align:right;"><div style="font-size:10px;color:var(--muted);">ผ่าน</div>
+        <div style="font-size:18px;font-weight:700;color:${rec.trips===rec.stops.length?'#00e676':'#f5c842'};">${rec.trips}/${rec.stops.length}</div></div>
+    </div>
+    <button class="btn-show-route" onclick="showHistRoute()">🗺️ แสดงเส้นทางบนแผนที่</button>
+    ${missedHtml}
+    <div class="section-label">เส้นทาง</div>
+    ${stopsHtml}
+    <div class="summary-grid">
+      <div class="sum-tile"><div class="sum-ico">✅</div><div class="sum-val">${rec.trips}/${rec.stops.length}</div><div class="sum-lbl">ผ่าน</div></div>
+      <div class="sum-tile"><div class="sum-ico">⏱️</div><div class="sum-val" style="font-size:11px;">${rec.totalTime}</div><div class="sum-lbl">เวลา</div></div>
+      <div class="sum-tile"><div class="sum-ico">❌</div><div class="sum-val" style="color:${rec.missedStops.length?'#ff4d6d':'#00e676'};">${rec.missedStops.length}</div><div class="sum-lbl">ขาด</div></div>
+    </div>
+    <div class="section-label" style="margin-top:8px;">💾 Backup Log 7 วัน</div>
+    <div class="backup-log">${bkHtml}</div>`;
+}
+
+function showHistRoute(){
+  if(selHistVehicle===null||!selHistDate) return;
+  const v=VEHICLES[selHistVehicle];
+  const rec=HIST_DB[v.id][selHistDate];
+  if(!rec||rec.track.length<2){alert('ไม่มีข้อมูลเส้นทาง');return;}
+  if(sidebarOpen) toggleSidebar();
+  document.getElementById('managerMap').style.display='none';
+  document.getElementById('historyMap').style.display='block';
+  document.getElementById('mmLabel').innerHTML=`📅 ย้อนหลัง — <b style="color:${v.color}">${v.name}</b>`;
+  document.getElementById('btnBackRt').style.display='block';
+  if(!historyMap){
+    historyMap=L.map('historyMap',{zoomControl:true}).setView([14.88,102.02],14);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(historyMap);
+    setTimeout(()=>historyMap.invalidateSize(),200);
+  } else {
+    histLayers.forEach(l=>{try{l.remove();}catch(e){}});
+    histLayers=[];
+    historyMap.invalidateSize();
+  }
+  const line=L.polyline(rec.track,{color:v.color,weight:5,opacity:.85}).addTo(historyMap);
+  histLayers.push(line);
+  rec.stops.forEach(s=>{
+    const col=s.visited?'#00e676':'#ff4d6d';
+    const m=L.marker([s.requiredLat,s.requiredLng],{icon:L.divIcon({
+      html:`<div style="width:18px;height:18px;border-radius:50%;background:${col}33;border:2.5px solid ${col};box-shadow:0 0 8px ${col};display:flex;align-items:center;justify-content:center;font-size:9px;color:${col};font-weight:900;">${s.visited?'✓':'✗'}</div>`,
+      className:'',iconAnchor:[9,9]
+    })}).addTo(historyMap).bindPopup(`<b>${s.name}</b><br><span style="color:${col};font-weight:700;">${s.visited?'✅ ผ่าน':'❌ ไม่ผ่าน'}</span>${s.arrive!=='—'?`<br>🕐 ${s.arrive} → ${s.depart}`:''}`);
+    histLayers.push(m);
+  });
+  historyMap.fitBounds(line.getBounds(),{padding:[40,40]});
+}
+function backToRealtime(){
+  document.getElementById('historyMap').style.display='none';
+  document.getElementById('managerMap').style.display='block';
+  document.getElementById('mmLabel').textContent='🟢 Real-time — รถทุกคัน';
+  document.getElementById('btnBackRt').style.display='none';
+  if(managerMap) managerMap.invalidateSize();
+}
+</script>
 </body>
 </html>
