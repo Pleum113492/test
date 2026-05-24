@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="th" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 <title>SUT Fleet — ระบบจัดการรถเก็บขยะ</title>
-<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&family=Teko:wght@400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-/* ==============================
-   DESIGN TOKENS
-============================== */
+/* ============================================================
+   DESIGN TOKENS — DARK / LIGHT
+   ============================================================ */
 :root{
   --bg:#060c1a;
   --bg2:#0c1526;
@@ -19,33 +19,55 @@
   --border:rgba(255,255,255,.07);
   --border2:rgba(0,201,167,.25);
   --text:#dde8f5;
+  --text2:#c5d4e8;
   --muted:#6b82a8;
   --primary:#00c9a7;
   --primary-dim:rgba(0,201,167,.12);
-  --v1:#00c9a7;
-  --v2:#ff7043;
-  --v1-dim:rgba(0,201,167,.15);
-  --v2-dim:rgba(255,112,67,.15);
-  --gold:#f5c842;
-  --red:#ff4d6d;
-  --green:#00e676;
-  --side-w:360px;
+  --v1:#00c9a7;--v2:#ff7043;
+  --v1-dim:rgba(0,201,167,.15);--v2-dim:rgba(255,112,67,.15);
+  --gold:#f5c842;--red:#ff4d6d;--green:#00e676;
+  --side-w:370px;
+  --map-filter:brightness(.52) saturate(.35) hue-rotate(182deg) invert(1) sepia(.25);
+  --shadow:0 8px 40px rgba(0,0,0,.55);
+  --metric-bg:rgba(0,201,167,.07);
+  --metric-border:rgba(0,201,167,.2);
 }
-*{margin:0;padding:0;box-sizing:border-box;}
-html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
-::-webkit-scrollbar{width:3px;}
-::-webkit-scrollbar-track{background:var(--bg2);}
-::-webkit-scrollbar-thumb{background:var(--primary);border-radius:2px;}
+[data-theme="light"]{
+  --bg:#f0f4fb;
+  --bg2:#e4eaf5;
+  --bg3:#d8e0f0;
+  --card:#ffffff;
+  --card2:#f5f8ff;
+  --border:rgba(0,0,0,.08);
+  --border2:rgba(0,160,130,.3);
+  --text:#1a2540;
+  --text2:#2d4070;
+  --muted:#7a8dac;
+  --primary:#00a882;
+  --primary-dim:rgba(0,168,130,.1);
+  --v1:#00a882;--v2:#e05a30;
+  --v1-dim:rgba(0,168,130,.12);--v2-dim:rgba(224,90,48,.12);
+  --gold:#c9962a;--red:#d63050;--green:#00a855;
+  --map-filter:brightness(.88) saturate(.7);
+  --shadow:0 4px 24px rgba(0,0,0,.12);
+  --metric-bg:rgba(0,168,130,.06);
+  --metric-border:rgba(0,168,130,.18);
+}
 
-/* ==============================
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;transition:background .3s,color .3s;}
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--primary);border-radius:4px;opacity:.5;}
+
+/* ============================================================
    UTILITY
-============================== */
+   ============================================================ */
 .hidden{display:none!important;}
 .mono{font-family:'Space Mono',monospace;}
+.teko{font-family:'Teko',sans-serif;}
 .text-primary{color:var(--primary);}
 .text-muted{color:var(--muted);}
-.text-v1{color:var(--v1);}
-.text-v2{color:var(--v2);}
 .pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
 .pill.v1{background:var(--v1-dim);color:var(--v1);border:1px solid rgba(0,201,167,.3);}
 .pill.v2{background:var(--v2-dim);color:var(--v2);border:1px solid rgba(255,112,67,.3);}
@@ -53,26 +75,54 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
 .pill.red{background:rgba(255,77,109,.12);color:var(--red);border:1px solid rgba(255,77,109,.3);}
 .pill.green{background:rgba(0,230,118,.1);color:var(--green);border:1px solid rgba(0,230,118,.25);}
 
-/* ==============================
+/* ============================================================
+   DARK / LIGHT TOGGLE SWITCH
+   ============================================================ */
+.theme-toggle{
+  display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;
+}
+.theme-toggle .toggle-label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.5px;}
+.toggle-track{
+  position:relative;width:42px;height:24px;border-radius:12px;
+  background:var(--bg3);border:1.5px solid var(--border);
+  transition:background .3s;
+}
+.toggle-track.on{background:var(--primary-dim);border-color:var(--border2);}
+.toggle-knob{
+  position:absolute;top:3px;left:3px;width:16px;height:16px;
+  border-radius:50%;background:var(--muted);
+  transition:transform .25s,background .25s;
+  display:flex;align-items:center;justify-content:center;font-size:9px;
+}
+.toggle-track.on .toggle-knob{transform:translateX(18px);background:var(--primary);}
+
+/* ============================================================
    LEAFLET OVERRIDES
-============================== */
-.leaflet-popup-content-wrapper{background:var(--card2);color:var(--text);border:1px solid var(--border2);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.6);}
+   ============================================================ */
+.leaflet-popup-content-wrapper{background:var(--card2);color:var(--text);border:1px solid var(--border2);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.4);}
 .leaflet-popup-tip{background:var(--card2);}
 .leaflet-popup-content{margin:14px 16px;font-family:'Sarabun',sans-serif;font-size:13px;}
-.leaflet-control-attribution{background:rgba(6,12,26,.8)!important;color:var(--muted)!important;font-size:9px!important;}
+.leaflet-control-attribution{background:rgba(6,12,26,.7)!important;color:var(--muted)!important;font-size:9px!important;}
 .leaflet-control-attribution a{color:var(--primary)!important;}
-.leaflet-tile-pane{filter:brightness(.52) saturate(.35) hue-rotate(182deg) invert(1) sepia(.25);}
+.leaflet-tile-pane{filter:var(--map-filter);transition:filter .5s;}
 .leaflet-top,.leaflet-bottom{z-index:10!important;}
 .leaflet-control-zoom a{background:var(--card2)!important;color:var(--text)!important;border-color:var(--border)!important;}
 .leaflet-control-zoom a:hover{background:var(--card)!important;color:var(--primary)!important;}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
 @keyframes ripple{0%{transform:scale(1);opacity:.8}100%{transform:scale(3);opacity:0}}
-@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+@keyframes countUp{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
 
-/* ==============================
+/* ============================================================
    LOGIN
-============================== */
+   ============================================================ */
 #loginPage{
   min-height:100vh;display:flex;align-items:center;justify-content:center;
   background:var(--bg);position:relative;overflow:hidden;
@@ -91,21 +141,17 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
 }
 .login-wrap{
   position:relative;z-index:1;
-  background:var(--card);
-  border:1px solid var(--border2);
-  border-radius:24px;
-  padding:52px 44px;
-  width:min(440px,95vw);
-  box-shadow:0 0 80px rgba(0,201,167,.08),0 40px 100px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.06);
+  background:var(--card);border:1px solid var(--border2);
+  border-radius:24px;padding:52px 44px;width:min(440px,95vw);
+  box-shadow:0 0 80px rgba(0,201,167,.08),0 40px 100px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06);
   animation:fadein .5s ease;
 }
 .login-logo{text-align:center;margin-bottom:36px;}
 .login-logo .wordmark{
-  font-family:'Space Mono',monospace;font-size:22px;font-weight:700;
-  color:var(--primary);letter-spacing:4px;
-  text-shadow:0 0 30px rgba(0,201,167,.4);
+  font-family:'Teko',sans-serif;font-size:34px;font-weight:700;letter-spacing:6px;
+  color:var(--primary);text-shadow:0 0 30px rgba(0,201,167,.4);
 }
-.login-logo .sub{font-size:14px;color:var(--muted);margin-top:6px;letter-spacing:.5px;}
+.login-logo .sub{font-size:14px;color:var(--muted);margin-top:4px;letter-spacing:.5px;}
 .login-logo .badge{
   display:inline-block;margin-top:10px;
   background:linear-gradient(135deg,#1e40af,#2563eb);
@@ -120,7 +166,7 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
   transition:all .25s;display:flex;flex-direction:column;align-items:center;gap:7px;
 }
 .role-tab .tab-icon{font-size:26px;}
-.role-tab.active{border-color:var(--primary);color:var(--primary);background:var(--primary-dim);box-shadow:0 0 20px rgba(0,201,167,.1);}
+.role-tab.active{border-color:var(--primary);color:var(--primary);background:var(--primary-dim);}
 .role-tab:hover:not(.active){border-color:rgba(255,255,255,.15);color:var(--text);}
 .fgroup{margin-bottom:18px;}
 .fgroup label{display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;}
@@ -139,30 +185,30 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
   cursor:pointer;transition:all .3s;letter-spacing:.5px;
 }
 .login-btn:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,201,167,.35);}
-.login-btn:active{transform:translateY(0);}
 .err-msg{display:none;color:var(--red);font-size:13px;text-align:center;
   margin-top:12px;padding:10px;background:rgba(255,77,109,.08);border-radius:10px;border:1px solid rgba(255,77,109,.2);}
 .login-hint{margin-top:18px;text-align:center;font-size:11px;color:var(--muted);}
+.login-theme{position:absolute;top:20px;right:20px;z-index:10;}
 
-/* ==============================
+/* ============================================================
    APP SHELL
-============================== */
+   ============================================================ */
 .app-shell{display:none;flex-direction:column;height:100vh;}
 .app-shell.visible{display:flex;}
 
-/* TOP BAR */
+/* TOPBAR */
 .topbar{
   display:flex;align-items:center;justify-content:space-between;
   padding:0 18px;height:58px;flex-shrink:0;
   background:var(--bg2);border-bottom:1px solid var(--border);
-  position:relative;z-index:50;
+  position:relative;z-index:50;transition:background .3s;
 }
 .topbar-left{display:flex;align-items:center;gap:12px;}
-.topbar-brand{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--primary);letter-spacing:2px;}
+.topbar-brand{font-family:'Teko',sans-serif;font-size:20px;font-weight:700;color:var(--primary);letter-spacing:3px;}
 .topbar-sub{font-size:12px;color:var(--muted);}
-.topbar-right{display:flex;align-items:center;gap:10px;}
+.topbar-right{display:flex;align-items:center;gap:12px;}
 .avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#008a73);
-  display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+  display:flex;align-items:center;justify-content:center;font-size:14px;}
 .username-label{font-size:13px;font-weight:600;color:var(--text);}
 .btn-logout{
   padding:6px 14px;background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.25);
@@ -175,14 +221,49 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
   padding:7px;display:flex;flex-direction:column;gap:4.5px;transition:border-color .2s;
 }
 .btn-menu:hover{border-color:var(--primary);}
-.menu-line{width:18px;height:1.5px;background:var(--text);border-radius:1px;transition:background .2s;}
-.btn-menu:hover .menu-line{background:var(--primary);}
+.menu-line{width:18px;height:1.5px;background:var(--text);border-radius:1px;}
 
-/* ==============================
+/* ============================================================
+   SUMMARY METRIC CARDS
+   ============================================================ */
+.metrics-strip{
+  display:flex;gap:0;background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;overflow:hidden;
+}
+.metric-card{
+  flex:1;padding:12px 18px;border-right:1px solid var(--border);
+  background:var(--metric-bg);
+  display:flex;align-items:center;gap:12px;
+  transition:background .2s;
+  position:relative;overflow:hidden;
+}
+.metric-card:last-child{border-right:none;}
+.metric-card::before{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:var(--primary);opacity:.5;
+}
+.metric-card:nth-child(2)::before{background:var(--gold);}
+.metric-card:nth-child(3)::before{background:var(--green);}
+.metric-card:nth-child(4)::before{background:var(--v2);}
+.metric-icon{font-size:22px;flex-shrink:0;}
+.metric-body{flex:1;min-width:0;}
+.metric-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;white-space:nowrap;}
+.metric-val{
+  font-family:'Teko',sans-serif;font-size:22px;font-weight:600;
+  color:var(--text);line-height:1;margin-top:1px;
+  transition:color .3s;
+}
+.metric-val.loaded{color:var(--primary);animation:countUp .4s ease;}
+.metric-card:nth-child(2) .metric-val.loaded{color:var(--gold);}
+.metric-card:nth-child(3) .metric-val.loaded{color:var(--green);}
+.metric-card:nth-child(4) .metric-val.loaded{color:var(--v2);}
+.metric-sub{font-size:10px;color:var(--muted);margin-top:1px;}
+
+/* ============================================================
    DRIVER LAYOUT
-============================== */
+   ============================================================ */
 .driver-body{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px;}
-
 .section-label{font-size:10px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:1.8px;margin-bottom:8px;}
 
 .car-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
@@ -197,11 +278,84 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
 .car-name{font-size:12px;font-weight:700;margin-bottom:4px;}
 .car-plate{font-size:10px;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:6px;}
 
-.info-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;}
+.info-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;transition:background .3s;}
 .info-card .ic-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;}
 .info-card .ic-row:last-child{border-bottom:none;}
 .info-card .ic-key{color:var(--muted);}
 .info-card .ic-val{font-weight:700;}
+
+/* ============================================================
+   ROUTE TIMELINE (Driver)
+   ============================================================ */
+.route-timeline{
+  background:var(--card);border:1px solid var(--border);border-radius:14px;
+  padding:16px;display:flex;flex-direction:column;gap:0;
+}
+.rt-label{
+  display:flex;align-items:center;gap:8px;margin-bottom:12px;
+}
+.rt-badge{
+  font-family:'Teko',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;
+  padding:3px 10px;border-radius:6px;
+}
+.rt-badge.r1{background:var(--v1-dim);color:var(--v1);}
+.rt-badge.r2{background:var(--v2-dim);color:var(--v2);}
+.tl-item{
+  display:flex;gap:10px;position:relative;
+}
+.tl-left{display:flex;flex-direction:column;align-items:center;width:28px;flex-shrink:0;}
+.tl-num{
+  width:22px;height:22px;border-radius:50%;
+  border:2px solid var(--border);background:var(--bg3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;font-family:'Space Mono',monospace;
+  color:var(--muted);flex-shrink:0;transition:all .3s;
+}
+.tl-item.active .tl-num{
+  border-color:var(--primary);background:var(--primary);color:#000;
+  box-shadow:0 0 12px rgba(0,201,167,.5);
+}
+.tl-item.visited .tl-num{border-color:var(--green);background:var(--green);color:#000;}
+.tl-item.critical .tl-num{border-color:var(--gold);}
+.tl-line{flex:1;width:1.5px;background:var(--border);margin:2px 0;}
+.tl-content{flex:1;padding-bottom:10px;}
+.tl-name{font-size:12px;font-weight:700;line-height:1.3;color:var(--text2);}
+.tl-item.critical .tl-name{color:var(--text);}
+.tl-item.active .tl-name{color:var(--primary);}
+.tl-tags{display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;}
+.tl-tag{font-size:9px;padding:1px 6px;border-radius:4px;font-weight:700;}
+.tl-tag.crit{background:rgba(245,200,66,.12);color:var(--gold);border:1px solid rgba(245,200,66,.2);}
+.tl-tag.base{background:rgba(255,77,109,.1);color:var(--red);border:1px solid rgba(255,77,109,.2);}
+
+/* Route summary tabs */
+.route-tabs-wrap{display:flex;gap:8px;margin-bottom:4px;}
+.route-tab-btn{
+  flex:1;padding:9px;background:var(--bg3);border:1.5px solid var(--border);
+  border-radius:10px;color:var(--muted);cursor:pointer;
+  font-family:'Sarabun',sans-serif;font-size:12px;font-weight:700;
+  transition:all .2s;text-align:center;
+}
+.route-tab-btn.active.r1{border-color:var(--v1);color:var(--v1);background:var(--v1-dim);}
+.route-tab-btn.active.r2{border-color:var(--v2);color:var(--v2);background:var(--v2-dim);}
+
+/* Scrollable point list */
+.point-list-wrap{
+  max-height:260px;overflow-y:auto;margin-top:8px;
+  border:1px solid var(--border);border-radius:10px;
+  background:var(--bg3);
+}
+.point-item{
+  display:flex;align-items:center;gap:10px;padding:8px 12px;
+  border-bottom:1px solid var(--border);font-size:12px;
+  transition:background .15s;
+}
+.point-item:last-child{border-bottom:none;}
+.point-item:hover{background:var(--card);}
+.point-item.crit-point{border-left:2px solid var(--gold);}
+.point-item.base-point{border-left:2px solid var(--red);}
+.pt-num{font-family:'Space Mono',monospace;font-size:10px;font-weight:700;color:var(--muted);min-width:22px;}
+.pt-name{flex:1;color:var(--text);}
+.pt-badge{font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700;white-space:nowrap;}
 
 .btn-start{
   padding:16px;background:linear-gradient(135deg,var(--primary),#009e83);
@@ -212,115 +366,103 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
 .btn-start:disabled{opacity:.35;cursor:not-allowed;transform:none!important;box-shadow:none!important;}
 .btn-start:not(:disabled):hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,201,167,.35);}
 
-.nav-bar{
-  display:none;background:var(--card);border:1px solid var(--border2);
-  border-radius:14px;padding:14px 16px;
-  align-items:center;gap:14px;flex-wrap:wrap;
-}
-.nav-stat{flex:1;min-width:70px;text-align:center;}
-.nav-stat-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
-.nav-stat-val{font-size:22px;font-weight:700;color:var(--primary);font-family:'Space Mono',monospace;margin-top:2px;}
-.nav-divider{width:1px;height:36px;background:var(--border);}
-.nav-dest{flex:2;min-width:120px;}
-.nav-dest-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
-.nav-dest-val{font-size:13px;font-weight:700;margin-top:3px;line-height:1.3;}
-
-/* navMap — fullscreen after startNav */
+/* ============================================================
+   FULLSCREEN NAV MAP + HUD
+   ============================================================ */
 #navMap{
-  display:none;
-  position:fixed;inset:0;
-  z-index:200;
+  display:none;position:fixed;inset:0;z-index:200;
 }
 .ors-loading{
   position:absolute;inset:0;background:rgba(6,12,26,.88);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
-  z-index:999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:999;
 }
 .spinner{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;}
 .ors-loading p{font-size:13px;color:var(--muted);}
 
-/* HUD overlay — floats on top of fullscreen map */
+/* NAV HUD — bottom overlay */
 #navHUD{
-  display:none;
-  position:fixed;bottom:0;left:0;right:0;z-index:300;
-  padding:12px 14px 20px;
-  background:linear-gradient(to top,rgba(6,12,26,.95) 70%,transparent 100%);
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:300;padding:12px 14px 20px;
+  background:linear-gradient(to top,rgba(6,12,26,.97) 70%,transparent 100%);
 }
 .nav-bar{
-  background:rgba(20,31,56,.92);border:1px solid var(--border2);
+  background:rgba(20,31,56,.95);border:1px solid var(--border2);
   border-radius:16px;padding:14px 16px;
   display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  backdrop-filter:blur(12px);
-  box-shadow:0 -4px 30px rgba(0,0,0,.4);
+  backdrop-filter:blur(12px);box-shadow:0 -4px 30px rgba(0,0,0,.4);
 }
 .nav-stat{flex:1;min-width:70px;text-align:center;}
 .nav-stat-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
-.nav-stat-val{font-size:22px;font-weight:700;color:var(--primary);font-family:'Space Mono',monospace;margin-top:2px;}
+.nav-stat-val{font-family:'Teko',sans-serif;font-size:26px;font-weight:600;color:var(--primary);line-height:1;}
 .nav-divider{width:1px;height:36px;background:var(--border);}
 .nav-dest{flex:2;min-width:120px;}
 .nav-dest-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
 .nav-dest-val{font-size:13px;font-weight:700;margin-top:3px;line-height:1.3;}
 
-/* ORS info chip — top-left overlay on map */
-#orsChip{
-  display:none;
-  position:fixed;top:68px;left:14px;z-index:300;
-  background:rgba(6,12,26,.9);border:1px solid var(--border2);
-  border-radius:12px;padding:9px 14px;
-  backdrop-filter:blur(10px);
-  font-size:12px;max-width:calc(100vw - 28px);
+/* NAV PROGRESS BAR */
+#navProgressBar{
+  display:none;position:fixed;top:0;left:0;right:0;z-index:310;height:3px;
+  background:var(--border);
 }
-/* Back button — top-right on map */
+#navProgressFill{height:100%;background:var(--primary);width:0%;transition:width .5s ease;}
+
+/* ORS chip top-left */
+#orsChip{
+  display:none;position:fixed;top:68px;left:14px;z-index:300;
+  background:rgba(6,12,26,.92);border:1px solid var(--border2);
+  border-radius:12px;padding:9px 14px;
+  backdrop-filter:blur(10px);font-size:12px;max-width:calc(100vw - 28px);
+}
+/* Next stop chip — top center */
+#nextStopChip{
+  display:none;position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:300;
+  background:rgba(6,12,26,.92);border:1px solid var(--border2);
+  border-radius:30px;padding:8px 20px;
+  backdrop-filter:blur(10px);font-size:12px;font-weight:700;
+  white-space:nowrap;max-width:calc(100vw - 28px);text-align:center;
+}
+/* Exit nav btn */
 #btnExitNav{
-  display:none;
-  position:fixed;top:68px;right:14px;z-index:300;
-  background:rgba(6,12,26,.9);border:1px solid rgba(255,77,109,.35);
+  display:none;position:fixed;top:68px;right:14px;z-index:300;
+  background:rgba(6,12,26,.92);border:1px solid rgba(255,77,109,.35);
   color:var(--red);border-radius:10px;padding:8px 14px;
   font-family:'Sarabun',sans-serif;font-size:12px;font-weight:700;
   cursor:pointer;backdrop-filter:blur(10px);transition:all .2s;
 }
 #btnExitNav:hover{background:rgba(255,77,109,.15);}
-@media(max-width:600px){
-  .nav-stat-val{font-size:18px;}
-  .nav-dest-val{font-size:12px;}
-}
 
-/* ==============================
+/* ============================================================
    MANAGER LAYOUT
-============================== */
+   ============================================================ */
 .manager-body{flex:1;position:relative;overflow:hidden;}
 #managerMap,#historyMap{position:absolute;inset:0;z-index:1;}
 #historyMap{display:none;}
 
-/* MAP MODE PILL */
 .map-mode-bar{
   position:absolute;top:12px;left:50%;transform:translateX(-50%);
   z-index:800;display:flex;align-items:center;gap:10px;
-  background:rgba(6,12,26,.9);border:1px solid var(--border2);
+  background:rgba(6,12,26,.92);border:1px solid var(--border2);
   border-radius:30px;padding:7px 18px;
-  backdrop-filter:blur(12px);box-shadow:0 4px 24px rgba(0,0,0,.5);
+  backdrop-filter:blur(12px);box-shadow:var(--shadow);
   white-space:nowrap;max-width:calc(100vw - 32px);
 }
-.map-mode-label{font-size:12px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;}
+.map-mode-label{font-size:12px;font-weight:700;color:var(--text);}
 .btn-back-rt{
   background:var(--primary-dim);border:1px solid rgba(0,201,167,.35);
   color:var(--primary);border-radius:20px;padding:4px 14px;
   font-size:11px;font-weight:700;cursor:pointer;
-  font-family:'Sarabun',sans-serif;transition:all .2s;display:none;white-space:nowrap;
+  font-family:'Sarabun',sans-serif;transition:all .2s;display:none;
 }
 .btn-back-rt:hover{background:rgba(0,201,167,.25);}
 
-/* REAL-TIME VEHICLE TRACKERS (HUD) */
+/* RT HUD */
 .rt-hud{
   position:absolute;bottom:16px;right:16px;z-index:800;
-  display:flex;flex-direction:column;gap:8px;
-  pointer-events:none;
+  display:flex;flex-direction:column;gap:8px;pointer-events:none;
 }
 .rt-card{
-  background:rgba(6,12,26,.88);border-radius:12px;
+  background:rgba(6,12,26,.9);border-radius:12px;
   padding:10px 14px;border-left:3px solid var(--v1);
-  backdrop-filter:blur(10px);min-width:190px;
-  pointer-events:auto;
+  backdrop-filter:blur(10px);min-width:200px;pointer-events:auto;
 }
 .rt-card.v2{border-left-color:var(--v2);}
 .rt-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;}
@@ -334,7 +476,9 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
 .rt-progress-fill{height:100%;background:var(--v1);border-radius:2px;transition:width .5s ease;}
 .rt-card.v2 .rt-progress-fill{background:var(--v2);}
 
-/* SIDEBAR / DRAWER */
+/* ============================================================
+   SIDEBAR / DRAWER
+   ============================================================ */
 .backdrop{position:absolute;inset:0;background:transparent;z-index:900;pointer-events:none;transition:background .3s;}
 .backdrop.on{background:rgba(0,0,0,.6);pointer-events:auto;}
 .sidebar{
@@ -342,16 +486,14 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
   background:var(--bg2);border-right:1px solid var(--border);
   padding:0 0 24px;overflow:hidden;
   display:flex;flex-direction:column;z-index:1000;
-  transform:translateX(-105%);
-  transition:transform .3s cubic-bezier(.4,0,.2,1),box-shadow .3s;
+  transform:translateX(-105%);transition:transform .3s cubic-bezier(.4,0,.2,1),box-shadow .3s;
 }
-.sidebar.open{transform:translateX(0);box-shadow:16px 0 60px rgba(0,0,0,.8);}
+.sidebar.open{transform:translateX(0);box-shadow:16px 0 60px rgba(0,0,0,.5);}
 .sidebar-head{
   display:flex;align-items:center;justify-content:space-between;
-  padding:18px 20px 14px;border-bottom:1px solid var(--border);
-  flex-shrink:0;
+  padding:18px 20px 14px;border-bottom:1px solid var(--border);flex-shrink:0;
 }
-.sidebar-title{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--primary);letter-spacing:1px;}
+.sidebar-title{font-family:'Teko',sans-serif;font-size:18px;font-weight:700;color:var(--primary);letter-spacing:2px;}
 .btn-close{background:none;border:1px solid var(--border);color:var(--muted);width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:14px;transition:all .2s;}
 .btn-close:hover{border-color:var(--red);color:var(--red);}
 .tab-nav{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -367,47 +509,33 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
 .tab-panel{display:none;}
 .tab-panel.active{display:flex;flex-direction:column;gap:12px;}
 
-/* Sidebar components */
 .sdrop{
   width:100%;padding:10px 12px;background:var(--bg3);
   border:1px solid var(--border);border-radius:10px;
   color:var(--text);font-family:'Sarabun',sans-serif;font-size:13px;cursor:pointer;
 }
 .sdrop:focus{outline:none;border-color:var(--primary);}
-
 .dist-box{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;}
 .dist-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;}
-.dist-total{
-  border-top:1px solid var(--border);margin-top:6px;padding-top:8px;
-  display:flex;justify-content:space-between;align-items:center;
-}
-.dist-total-val{font-size:16px;font-weight:700;color:var(--primary);font-family:'Space Mono',monospace;}
-
+.dist-total{border-top:1px solid var(--border);margin-top:6px;padding-top:8px;display:flex;justify-content:space-between;align-items:center;}
+.dist-total-val{font-family:'Teko',sans-serif;font-size:22px;font-weight:600;color:var(--primary);}
 .warn-box{background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.25);border-radius:10px;padding:12px;}
 .warn-title{font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
-.warn-item{font-size:11px;color:#f5d97a;padding:3px 0;display:flex;gap:6px;}
-
+.warn-item{font-size:11px;color:#f5d97a;padding:3px 0;}
 .legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);padding:3px 0;}
 .l-line{width:22px;height:3px;border-radius:2px;flex-shrink:0;}
 .l-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
-
-/* stat grid */
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .stat-tile{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;}
 .st-lbl{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
-.st-val{font-size:22px;font-weight:700;color:var(--primary);font-family:'Space Mono',monospace;margin-top:4px;}
-
-/* day chips */
+.st-val{font-family:'Teko',sans-serif;font-size:26px;font-weight:600;color:var(--primary);margin-top:2px;}
 .day-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
 .day-chip{
   background:var(--bg3);border:1px solid var(--border);color:var(--muted);
-  border-radius:20px;padding:5px 12px;font-size:12px;font-family:'Sarabun',sans-serif;
-  cursor:pointer;transition:all .2s;
+  border-radius:20px;padding:5px 12px;font-size:12px;font-family:'Sarabun',sans-serif;cursor:pointer;transition:all .2s;
 }
 .day-chip.active{background:var(--primary-dim);border-color:rgba(0,201,167,.4);color:var(--primary);font-weight:700;}
-
-/* history detail */
-.hist-header{background:var(--bg3);border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px;margin-bottom:2px;}
+.hist-header{background:var(--bg3);border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px;}
 .hist-stop-list{display:flex;flex-direction:column;gap:0;}
 .hist-stop{display:flex;gap:10px;align-items:flex-start;}
 .hs-dot-wrap{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
@@ -416,22 +544,19 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
 .hs-content{padding-bottom:12px;}
 .hs-name{font-size:12px;font-weight:700;line-height:1.3;}
 .hs-meta{font-size:10px;color:var(--muted);margin-top:3px;display:flex;flex-wrap:wrap;gap:8px;}
-
 .btn-show-route{
   width:100%;padding:9px;background:var(--primary-dim);border:1px solid rgba(0,201,167,.3);
   color:var(--primary);border-radius:10px;font-family:'Sarabun',sans-serif;font-size:12px;
   font-weight:700;cursor:pointer;transition:all .2s;
 }
 .btn-show-route:hover{background:rgba(0,201,167,.22);}
-
 .missed-box{background:rgba(255,77,109,.07);border:1px solid rgba(255,77,109,.25);border-radius:10px;padding:12px;}
 .missed-title{font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
 .missed-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,77,109,.08);}
 .missed-item:last-child{border-bottom:none;}
 .missed-name{font-size:12px;font-weight:700;color:#ff9aaa;flex:1;}
 .missed-coord{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:2px;}
-.missed-tag{background:rgba(255,77,109,.15);color:var(--red);border:1px solid rgba(255,77,109,.3);border-radius:5px;font-size:9px;font-weight:700;padding:2px 7px;letter-spacing:.5px;white-space:nowrap;}
-
+.missed-tag{background:rgba(255,77,109,.15);color:var(--red);border:1px solid rgba(255,77,109,.3);border-radius:5px;font-size:9px;font-weight:700;padding:2px 7px;letter-spacing:.5px;}
 .backup-log{background:var(--bg3);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
 .backup-empty{padding:14px;text-align:center;color:var(--green);font-size:12px;font-weight:600;}
 .bk-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:11px;}
@@ -440,38 +565,35 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
 .bk-stop{flex:1;display:flex;flex-direction:column;gap:1px;}
 .bk-stop b{font-size:12px;}
 .bk-coord{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;}
-.bk-tag{background:rgba(255,77,109,.12);color:var(--red);border:1px solid rgba(255,77,109,.25);border-radius:4px;font-size:8px;font-weight:700;padding:2px 6px;letter-spacing:.5px;flex-shrink:0;}
-
+.bk-tag{background:rgba(255,77,109,.12);color:var(--red);border:1px solid rgba(255,77,109,.25);border-radius:4px;font-size:8px;font-weight:700;padding:2px 6px;flex-shrink:0;}
 .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
 .sum-tile{background:var(--bg3);border-radius:8px;padding:9px;text-align:center;}
 .sum-ico{font-size:16px;}
 .sum-val{font-size:13px;font-weight:700;color:var(--primary);font-family:'Space Mono',monospace;margin-top:2px;}
 .sum-lbl{font-size:9px;color:var(--muted);margin-top:1px;}
-
-/* route detail list */
 .crit-list{display:flex;flex-direction:column;gap:4px;max-height:320px;overflow-y:auto;}
 .crit-item{
   display:flex;align-items:center;gap:8px;padding:7px 10px;
-  background:rgba(245,200,66,.05);border:1px solid rgba(245,200,66,.1);
-  border-radius:7px;font-size:11px;
+  background:rgba(245,200,66,.05);border:1px solid rgba(245,200,66,.1);border-radius:7px;font-size:11px;
 }
 .crit-num{color:var(--gold);font-weight:700;min-width:20px;font-family:'Space Mono',monospace;}
 .crit-name{flex:1;line-height:1.3;}
 .crit-coord{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;white-space:nowrap;}
-
-/* ORS status */
 .ors-status{display:flex;align-items:center;gap:6px;font-size:11px;padding:8px 12px;border-radius:8px;background:var(--bg3);}
 
-/* MOBILE */
+/* ============================================================
+   MOBILE
+   ============================================================ */
 @media(max-width:600px){
   :root{--side-w:min(320px,92vw);}
   .topbar{padding:0 12px;height:52px;}
-  .topbar-brand{font-size:11px;}
+  .topbar-brand{font-size:16px;}
   .username-label,.topbar-sub{display:none;}
   .driver-body{padding:12px;}
   .car-grid{grid-template-columns:repeat(2,1fr);}
-  #navMap{height:42vh;}
-  .nav-stat-val{font-size:18px;}
+  .metrics-strip{flex-wrap:wrap;}
+  .metric-card{min-width:50%;}
+  .nav-stat-val{font-size:22px;}
   .rt-hud{bottom:10px;right:10px;}
   .rt-card{min-width:160px;}
   .map-mode-bar{top:8px;padding:5px 14px;}
@@ -483,10 +605,18 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
 <!-- ===== LOGIN ===== -->
 <div id="loginPage">
   <div class="login-grid"></div>
+  <!-- Theme toggle on login -->
+  <div class="login-theme">
+    <div class="theme-toggle" onclick="toggleTheme()" title="สลับธีม">
+      <div class="toggle-track" id="loginToggleTrack">
+        <div class="toggle-knob">🌙</div>
+      </div>
+    </div>
+  </div>
   <div class="login-wrap">
     <div class="login-logo">
-      <div class="wordmark">TrashTrack</div>
-      <div class="sub">ระบบติดตามรถเก็บขยะ</div>
+      <div class="wordmark">TRASHTRACK</div>
+      <div class="sub">ระบบติดตามรถเก็บขยะ มทส.</div>
       <div class="badge">SURANAREE UNIVERSITY OF TECHNOLOGY</div>
     </div>
     <div class="role-tabs">
@@ -506,55 +636,108 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
   <div class="topbar" id="driverTopbar">
     <div class="topbar-left">
       <div class="topbar-brand">SUT FLEET</div>
-      <div class="topbar-sub">คนขับ</div>
+      <div class="topbar-sub">— คนขับ</div>
     </div>
     <div class="topbar-right">
+      <div class="theme-toggle" onclick="toggleTheme()" title="สลับธีม">
+        <span style="font-size:11px;color:var(--muted);" id="driverThemeIcon">🌙</span>
+        <div class="toggle-track" id="driverToggleTrack">
+          <div class="toggle-knob">☀️</div>
+        </div>
+      </div>
       <div class="avatar">🚛</div>
       <span class="username-label" id="driverLabel">—</span>
       <button class="btn-logout" onclick="logout()">ออก</button>
     </div>
   </div>
+
+  <!-- SUMMARY METRICS (Driver) -->
+  <div class="metrics-strip" id="driverMetrics" style="display:none;">
+    <div class="metric-card">
+      <div class="metric-icon">📏</div>
+      <div class="metric-body">
+        <div class="metric-lbl">ระยะทาง</div>
+        <div class="metric-val mono" id="dMetDist">—</div>
+        <div class="metric-sub">กิโลเมตร</div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon">⏱️</div>
+      <div class="metric-body">
+        <div class="metric-lbl">เวลาโดยประมาณ</div>
+        <div class="metric-val" id="dMetTime">—</div>
+        <div class="metric-sub">ชั่วโมง:นาที</div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon">📍</div>
+      <div class="metric-body">
+        <div class="metric-lbl">จุดเก็บขยะ</div>
+        <div class="metric-val" id="dMetPts">—</div>
+        <div class="metric-sub">จุดทั้งหมด</div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon">⭐</div>
+      <div class="metric-body">
+        <div class="metric-lbl">จุดสำคัญ</div>
+        <div class="metric-val" id="dMetCrit">—</div>
+        <div class="metric-sub">จุดวิกฤต</div>
+      </div>
+    </div>
+  </div>
+
   <div class="driver-body" id="driverBody">
+    <!-- Car Selection -->
     <div id="carSection">
       <div class="section-label">เลือกยานพาหนะของคุณ</div>
       <div class="car-grid" id="carGrid"></div>
     </div>
+
+    <!-- Route Detail Section -->
     <div id="routeSection" class="hidden">
       <div class="section-label">ข้อมูลเส้นทาง</div>
       <div class="info-card" id="routeInfoCard"></div>
-      <div id="orsRouteInfo" style="margin-top:10px;display:none;">
-        <div class="info-card" id="orsRouteCard"></div>
+
+      <!-- Route Timeline -->
+      <div id="routeTimelineWrap">
+        <div class="section-label" style="margin-top:4px;">ลำดับจุดเก็บขยะ</div>
+        <div class="route-timeline" id="routeTimeline">
+          <!-- populated by JS -->
+        </div>
       </div>
     </div>
+
     <button class="btn-start" id="btnStart" disabled onclick="startNav()">🚀 เริ่มการเดินทาง</button>
   </div>
 </div>
 
-<!-- ===== FULLSCREEN NAV MAP (outside app shell, overlays everything) ===== -->
+<!-- ===== FULLSCREEN NAV MAP ===== -->
 <div id="navMap">
   <div class="ors-loading" id="navLoading">
     <div class="spinner"></div>
     <p>กำลังโหลดเส้นทางจาก OpenRouteService...</p>
   </div>
 </div>
-
-<!-- ORS info chip top-left -->
+<div id="navProgressBar"><div id="navProgressFill"></div></div>
 <div id="orsChip"></div>
-
-<!-- Exit nav button top-right -->
+<div id="nextStopChip">🧭 —</div>
 <button id="btnExitNav" onclick="exitNav()">✕ ออกจากแผนที่</button>
-
-<!-- HUD nav bar bottom overlay -->
 <div id="navHUD">
   <div class="nav-bar">
     <div class="nav-stat">
-      <div class="nav-stat-lbl">Speed km/h</div>
+      <div class="nav-stat-lbl">km/h</div>
       <div class="nav-stat-val" id="speedVal">0</div>
     </div>
     <div class="nav-divider"></div>
     <div class="nav-stat">
       <div class="nav-stat-lbl">จุดที่</div>
       <div class="nav-stat-val" id="stopIdx">0</div>
+    </div>
+    <div class="nav-divider"></div>
+    <div class="nav-stat">
+      <div class="nav-stat-lbl">เก็บแล้ว</div>
+      <div class="nav-stat-val" id="collectedVal">0</div>
     </div>
     <div class="nav-divider"></div>
     <div class="nav-dest">
@@ -575,11 +758,54 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
       <div class="topbar-sub">— แดชบอร์ดผู้จัดการ</div>
     </div>
     <div class="topbar-right">
+      <div class="theme-toggle" onclick="toggleTheme()" title="สลับธีม">
+        <span style="font-size:11px;color:var(--muted);" id="mgrThemeIcon">🌙</span>
+        <div class="toggle-track" id="mgrToggleTrack">
+          <div class="toggle-knob">☀️</div>
+        </div>
+      </div>
       <div class="avatar">👔</div>
       <span class="username-label" id="managerLabel">—</span>
       <button class="btn-logout" onclick="logout()">ออก</button>
     </div>
   </div>
+
+  <!-- SUMMARY METRICS (Manager) -->
+  <div class="metrics-strip">
+    <div class="metric-card">
+      <div class="metric-icon">📏</div>
+      <div class="metric-body">
+        <div class="metric-lbl">ระยะทางรวม</div>
+        <div class="metric-val" id="mgrMetDist">กำลังโหลด...</div>
+        <div class="metric-sub">รถทั้ง 2 คัน รวมกัน</div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon">⏱️</div>
+      <div class="metric-body">
+        <div class="metric-lbl">เวลารวม (ORS)</div>
+        <div class="metric-val" id="mgrMetTime">—</div>
+        <div class="metric-sub">ชั่วโมง:นาที โดยประมาณ</div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon">🗑️</div>
+      <div class="metric-body">
+        <div class="metric-lbl">จุดเก็บขยะรวม</div>
+        <div class="metric-val" id="mgrMetTotal">—</div>
+        <div class="metric-sub">จุดทั้งหมดรวม 2 เส้นทาง</div>
+      </div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon">⭐</div>
+      <div class="metric-body">
+        <div class="metric-lbl">จุดสำคัญรวม</div>
+        <div class="metric-val" id="mgrMetCrit">—</div>
+        <div class="metric-sub">จุดวิกฤตที่ต้องผ่าน</div>
+      </div>
+    </div>
+  </div>
+
   <div class="manager-body">
     <div class="backdrop" id="backdrop" onclick="toggleSidebar()"></div>
 
@@ -602,7 +828,10 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
             <div class="section-label">📏 ระยะทางจริง (ORS)</div>
             <div class="dist-row"><span class="pill v1">83-8715</span><span id="d1val" class="mono" style="font-size:13px;">—</span></div>
             <div class="dist-row"><span class="pill v2">83-8716</span><span id="d2val" class="mono" style="font-size:13px;">—</span></div>
-            <div class="dist-total"><span style="font-size:12px;color:var(--muted);">รวมทั้งหมด</span><span class="dist-total-val" id="dtotal">—</span></div>
+            <div class="dist-total">
+              <span style="font-size:12px;color:var(--muted);">รวมทั้งหมด</span>
+              <span class="dist-total-val" id="dtotal">—</span>
+            </div>
           </div>
           <div id="orsStatusBox"></div>
           <div id="warnBox" class="hidden warn-box">
@@ -611,8 +840,8 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
           </div>
           <div>
             <div class="section-label">ตำนานแผนที่</div>
-            <div class="legend-item"><div class="l-line" style="background:var(--v1);"></div><span>เส้นทาง 83-8715 (ถนนจริง)</span></div>
-            <div class="legend-item"><div class="l-line" style="background:var(--v2);"></div><span>เส้นทาง 83-8716 (ถนนจริง)</span></div>
+            <div class="legend-item"><div class="l-line" style="background:var(--v1);"></div><span>เส้นทาง 83-8715</span></div>
+            <div class="legend-item"><div class="l-line" style="background:var(--v2);"></div><span>เส้นทาง 83-8716</span></div>
             <div class="legend-item"><div class="l-dot" style="background:#ff4d6d;border:2px solid white;"></div><span>โรงจัดการขยะ</span></div>
             <div class="legend-item"><div class="l-dot" style="background:var(--gold);"></div><span>จุดสำคัญ</span></div>
             <div class="legend-item"><div class="l-dot" style="background:var(--v1);animation:pulse 2s infinite;"></div><span>ตำแหน่งรถ Real-time</span></div>
@@ -639,8 +868,8 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
         <div class="tab-panel" id="t3panel">
           <select class="sdrop" id="routeDrop" onchange="showRouteDetail()">
             <option value="">— เลือกดูเส้นทาง —</option>
-            <option value="0">🚛 83-8715</option>
-            <option value="1">🚛 83-8716</option>
+            <option value="0">🚛 83-8715 (เส้นทาง 1)</option>
+            <option value="1">🚛 83-8716 (เส้นทาง 2)</option>
           </select>
           <div id="routeDetailCard"></div>
         </div>
@@ -655,7 +884,7 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
     <div id="managerMap"></div>
     <div id="historyMap"></div>
 
-    <!-- REAL-TIME HUD -->
+    <!-- RT HUD -->
     <div class="rt-hud" id="rtHud">
       <div class="rt-card" id="rtCard0">
         <div class="rt-card-top">
@@ -681,14 +910,31 @@ html,body{height:100%;font-family:'Sarabun',sans-serif;background:var(--bg);colo
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ========== CONFIG ==========
-// ORS API Key (stored as const — in production use .env / server-side proxy)
+// ============================================================
+// THEME
+// ============================================================
+let isDark = true;
+function toggleTheme() {
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  // Sync all toggles
+  ['loginToggleTrack','driverToggleTrack','mgrToggleTrack'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.classList.toggle('on', !isDark);
+  });
+  ['driverThemeIcon','mgrThemeIcon'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.textContent = isDark ? '🌙' : '☀️';
+  });
+}
+
+// ============================================================
+// CONFIG & DATA
+// ============================================================
 const ORS_API_KEY = 'eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6Ijk5OWViNTg4YzBhNjRiZTU4YjA2YjQ4NWZjMDI1Y2NjIiwiaCI6Im11cm11cjY0In0=';
 const ORS_URL = 'https://api.openrouteservice.org/v2/directions/driving-car/geojson';
-// ORS limit: 50 waypoints per request — we'll batch
 const ORS_CHUNK = 50;
 
-// ========== ROUTE DATA ==========
 const BASE = {name:'โรงจัดการขยะ',lat:14.862939,lng:102.027903,critical:true,isBase:true};
 
 const ROUTE_1_PTS = [
@@ -837,121 +1083,93 @@ const USERS = {
   driver2:{pass:'1234',role:'driver',display:'คนขับ 83-8716',vid:1},
 };
 
-// ========== STATE ==========
-let currentRole='manager', currentUser=null;
+// ============================================================
+// STATE
+// ============================================================
+let currentRole_sel='manager', currentUser=null;
 let navMap=null, managerMap=null, historyMap=null;
 let driverMarker=null, navInterval=null;
 let navWpIdx=0, navAnimStep=0, navRouteCoords=[];
+let navCoordIdx=0, navCollected=0;
 let mgrMarkers=[], mgrRouteLines=[], histLayers=[];
 let sidebarOpen=false;
 let selHistVehicle=null, selHistDate=null;
 let currentVehicle=null;
-// Shared real-time state (simulates GPS stream between driver and manager)
 const RT_STATE = {
-  0:{lat:BASE.lat,lng:BASE.lng,wpIdx:0,total:ROUTE_1_PTS.length,stopName:'โรงจัดการขยะ',active:false},
-  1:{lat:BASE.lat,lng:BASE.lng,wpIdx:0,total:ROUTE_2_PTS.length,stopName:'โรงจัดการขยะ',active:false},
+  0:{lat:BASE.lat,lng:BASE.lng,wpIdx:0,total:ROUTE_1_PTS.length,stopName:'โรงจัดการขยะ',active:false,pct:0},
+  1:{lat:BASE.lat,lng:BASE.lng,wpIdx:0,total:ROUTE_2_PTS.length,stopName:'โรงจัดการขยะ',active:false,pct:0},
 };
 let mgrRtMarkers={0:null,1:null};
 let mgrRtInterval=null;
 
-// ========== ORS API ==========
-// Decode ORS geometry (GeoJSON LineString from v2 endpoint)
-function extractGeoJSONCoords(geojson) {
-  const coords = [];
-  if (geojson && geojson.features) {
-    geojson.features.forEach(f => {
-      if (f.geometry && f.geometry.coordinates) {
-        f.geometry.coordinates.forEach(c => coords.push([c[1],c[0]]));
-      }
-    });
-  }
-  return coords;
-}
-
-async function fetchORSRoute(waypoints) {
-  // ORS max 50 waypoints per call — chunk and concatenate
-  const allCoords = [];
-  let totalDist = 0, totalDuration = 0;
-
-  // Build chunks of ORS_CHUNK max, overlapping by 1 point
-  const chunks = [];
-  for (let i=0; i<waypoints.length-1; i+=ORS_CHUNK-1) {
-    chunks.push(waypoints.slice(i, Math.min(i+ORS_CHUNK, waypoints.length)));
-    if (i+ORS_CHUNK >= waypoints.length) break;
-  }
-
-  for (const chunk of chunks) {
-    const body = {
-      coordinates: chunk.map(p => [p.lng, p.lat]),
-      preference: 'recommended',
-      units: 'km',
-      geometry: true,
-      instructions: false,
-    };
-    const res = await fetch(ORS_URL, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','Authorization': ORS_API_KEY},
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`ORS ${res.status}: ${err.slice(0,120)}`);
-    }
-    const data = await res.json();
-    if (data.features && data.features[0]) {
-      const feat = data.features[0];
-      const coords = feat.geometry.coordinates.map(c => [c[1],c[0]]);
-      // Avoid duplicating the overlap point
-      if (allCoords.length > 0) coords.shift();
-      allCoords.push(...coords);
-      if (feat.properties && feat.properties.summary) {
-        totalDist += feat.properties.summary.distance || 0;
-        totalDuration += feat.properties.summary.duration || 0;
-      }
-    }
-  }
-  return {coords: allCoords, distance: totalDist, duration: totalDuration};
-}
-
-// Human-readable duration
+// ============================================================
+// ORS HELPERS
+// ============================================================
 function fmtDuration(secs) {
-  const h = Math.floor(secs/3600), m = Math.floor((secs%3600)/60);
-  return h > 0 ? `${h} ชม. ${m} นาที` : `${m} นาที`;
+  const h=Math.floor(secs/3600), m=Math.floor((secs%3600)/60);
+  return h>0?`${h} ชม. ${m} นาที`:`${m} นาที`;
 }
-
-// Haversine fallback distance
-function hvDist(a,b) {
+function fmtDurationShort(secs) {
+  const h=Math.floor(secs/3600), m=Math.floor((secs%3600)/60);
+  return h>0?`${h}:${String(m).padStart(2,'0')} ชม.`:`${m} นาที`;
+}
+function hvDist(a,b){
   const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
   const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
 }
-function routeDist(pts) { let d=0; for(let i=0;i<pts.length-1;i++) d+=hvDist(pts[i],pts[i+1]); return d; }
+function routeDist(pts){let d=0;for(let i=0;i<pts.length-1;i++)d+=hvDist(pts[i],pts[i+1]);return d;}
 
-// ========== DATA VALIDATION ==========
-function validateRoutes() {
+async function fetchORSRoute(waypoints) {
+  const allCoords=[];
+  let totalDist=0, totalDuration=0;
+  const chunks=[];
+  for(let i=0;i<waypoints.length-1;i+=ORS_CHUNK-1){
+    chunks.push(waypoints.slice(i,Math.min(i+ORS_CHUNK,waypoints.length)));
+    if(i+ORS_CHUNK>=waypoints.length) break;
+  }
+  for(const chunk of chunks){
+    const body={coordinates:chunk.map(p=>[p.lng,p.lat]),preference:'recommended',units:'km',geometry:true,instructions:false};
+    const res=await fetch(ORS_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':ORS_API_KEY},body:JSON.stringify(body)});
+    if(!res.ok){const err=await res.text();throw new Error(`ORS ${res.status}: ${err.slice(0,120)}`);}
+    const data=await res.json();
+    if(data.features&&data.features[0]){
+      const feat=data.features[0];
+      const coords=feat.geometry.coordinates.map(c=>[c[1],c[0]]);
+      if(allCoords.length>0) coords.shift();
+      allCoords.push(...coords);
+      if(feat.properties&&feat.properties.summary){
+        totalDist+=feat.properties.summary.distance||0;
+        totalDuration+=feat.properties.summary.duration||0;
+      }
+    }
+  }
+  return{coords:allCoords,distance:totalDist,duration:totalDuration};
+}
+
+function validateRoutes(){
   const warns=[];
-  VEHICLES.forEach(v => {
+  VEHICLES.forEach(v=>{
     const seen=new Map();
-    v.route.forEach((p,i) => {
+    v.route.forEach((p,i)=>{
       if(p.isBase) return;
       const k=`${p.lat.toFixed(5)}_${p.lng.toFixed(5)}`;
       if(seen.has(k)) warns.push(`${v.plate}: จุด "${p.name}" ซ้ำ`);
       else seen.set(k,p.name);
-      if(isNaN(p.lat)||p.lat<13||p.lat>16||isNaN(p.lng)||p.lng<100||p.lng>105)
-        warns.push(`${v.plate}: พิกัดผิดปกติ "${p.name}"`);
     });
   });
   return warns;
 }
 
-// ========== LOGIN ==========
-let currentRole_sel='manager';
-function selectRole(r) {
+// ============================================================
+// LOGIN
+// ============================================================
+function selectRole(r){
   currentRole_sel=r;
   document.getElementById('roleManager').classList.toggle('active',r==='manager');
   document.getElementById('roleDriver').classList.toggle('active',r==='driver');
 }
-function login() {
+function login(){
   const u=document.getElementById('username').value.trim();
   const p=document.getElementById('password').value;
   const err=document.getElementById('errMsg');
@@ -961,24 +1179,24 @@ function login() {
   currentUser={...usr,uname:u};
   document.getElementById('loginPage').style.display='none';
   if(currentRole_sel==='driver'){
-    const app=document.getElementById('driverApp');
-    app.classList.add('visible');
+    document.getElementById('driverApp').classList.add('visible');
     document.getElementById('driverLabel').textContent=usr.display;
     initDriverPage();
   } else {
-    const app=document.getElementById('managerApp');
-    app.classList.add('visible');
+    document.getElementById('managerApp').classList.add('visible');
     document.getElementById('managerLabel').textContent=usr.display;
     setTimeout(initManagerMap,120);
   }
 }
 function logout(){location.reload();}
 
-// ========== DRIVER ==========
-function initDriverPage() {
+// ============================================================
+// DRIVER PAGE
+// ============================================================
+function initDriverPage(){
   const grid=document.getElementById('carGrid');
   grid.innerHTML='';
-  VEHICLES.forEach(v => {
+  VEHICLES.forEach(v=>{
     const mine=currentUser.vid===v.id;
     const d=document.createElement('div');
     d.className='car-card'+(mine?'':' locked');
@@ -991,164 +1209,258 @@ function initDriverPage() {
     grid.appendChild(d);
   });
 }
-function selectCar(id) {
+
+function selectCar(id){
   document.querySelectorAll('.car-card').forEach(c=>c.classList.remove('selected'));
   document.getElementById('cc'+id).classList.add('selected');
   currentVehicle=VEHICLES.find(v=>v.id===id);
   document.getElementById('btnStart').disabled=false;
+
   const sec=document.getElementById('routeSection');
   sec.classList.remove('hidden');
+
   const r=currentVehicle.route;
   const critCount=r.filter(p=>p.critical&&!p.isBase).length;
+  const totalPts=r.length-2;
+  const approxDist=routeDist(r);
+  const approxTime=approxDist/25*60; // ~25km/h avg → minutes
+
+  // Update metrics strip
+  document.getElementById('driverMetrics').style.display='flex';
+  document.getElementById('dMetDist').textContent=approxDist.toFixed(1)+' กม.';
+  document.getElementById('dMetDist').classList.add('loaded');
+  document.getElementById('dMetTime').textContent=fmtDurationShort(approxTime*60);
+  document.getElementById('dMetTime').classList.add('loaded');
+  document.getElementById('dMetPts').textContent=totalPts;
+  document.getElementById('dMetPts').classList.add('loaded');
+  document.getElementById('dMetCrit').textContent=critCount;
+  document.getElementById('dMetCrit').classList.add('loaded');
+
+  // Info card
   document.getElementById('routeInfoCard').innerHTML=`
-    <div class="ic-row"><span class="ic-key">รถ</span><span class="ic-val">${currentVehicle.name}</span></div>
-    <div class="ic-row"><span class="ic-key">จุดทั้งหมด</span><span class="ic-val">${r.length-2} จุด</span></div>
-    <div class="ic-row"><span class="ic-key">จุดสำคัญ</span><span class="ic-val">${critCount} จุด</span></div>
-    <div class="ic-row"><span class="ic-key">ระยะ (ประมาณ)</span><span class="ic-val">${routeDist(r).toFixed(1)} กม.</span></div>
-    <div class="ic-row" style="border:none;"><span class="ic-key">เส้นทาง</span><span class="pill ${currentVehicle.colorCls}">ORS Real Road</span></div>
+    <div class="ic-row"><span class="ic-key">🚛 รถ</span><span class="ic-val">${currentVehicle.name}</span></div>
+    <div class="ic-row"><span class="ic-key">📍 จุดทั้งหมด</span><span class="ic-val">${totalPts} จุด</span></div>
+    <div class="ic-row"><span class="ic-key">⭐ จุดสำคัญ</span><span class="ic-val">${critCount} จุด</span></div>
+    <div class="ic-row"><span class="ic-key">📏 ระยะทาง</span><span class="ic-val">${approxDist.toFixed(1)} กม.</span></div>
+    <div class="ic-row" style="border:none;"><span class="ic-key">🗺️ เส้นทาง</span><span class="pill ${currentVehicle.colorCls}">ORS Real Road</span></div>
   `;
+
+  // Build route timeline
+  buildRouteTimeline(r, currentVehicle);
 }
 
-async function startNav() {
+function buildRouteTimeline(route, vehicle) {
+  const wrap = document.getElementById('routeTimeline');
+  // Show only critical + base points in timeline for readability; with a full list below
+  const critPts = route.filter(p => p.critical || p.isBase);
+  const colorCls = vehicle.colorCls;
+
+  let html = `<div class="rt-label">
+    <span class="rt-badge ${colorCls}">${vehicle.plate}</span>
+    <span style="font-size:11px;color:var(--muted);">${route.length-2} จุดทั้งหมด · ${critPts.length-2} จุดสำคัญ</span>
+  </div>`;
+
+  // Timeline (critical points only for display)
+  critPts.forEach((p, i) => {
+    const isLast = i === critPts.length - 1;
+    const isBase = p.isBase;
+    let cls = 'tl-item';
+    if(isBase) cls += ' critical';
+    else if(p.critical) cls += ' critical';
+    if(i === 1) cls += ' active'; // second point = first destination
+
+    html += `<div class="${cls}">
+      <div class="tl-left">
+        <div class="tl-num">${isBase ? (i===0?'S':'E') : i}</div>
+        ${!isLast?'<div class="tl-line"></div>':''}
+      </div>
+      <div class="tl-content">
+        <div class="tl-name">${p.name}</div>
+        <div class="tl-tags">
+          ${isBase?`<span class="tl-tag base">🏭 ฐาน</span>`:''}
+          ${p.critical&&!isBase?`<span class="tl-tag crit">⭐ สำคัญ</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div style="margin-top:10px;">
+    <div class="section-label" style="margin-bottom:6px;">รายการจุดทั้งหมด (${route.length-2} จุด)</div>
+    <div class="point-list-wrap">`;
+
+  route.forEach((p, i) => {
+    if(i===0||i===route.length-1) return; // skip base
+    const cls = p.isBase?'point-item base-point':p.critical?'point-item crit-point':'point-item';
+    html += `<div class="${cls}">
+      <span class="pt-num">${i}</span>
+      <span class="pt-name">${p.name}</span>
+      ${p.critical?`<span class="pt-badge" style="background:rgba(245,200,66,.12);color:var(--gold);border:1px solid rgba(245,200,66,.2);">⭐</span>`:''}
+    </div>`;
+  });
+
+  html += `</div></div>`;
+  wrap.innerHTML = html;
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+async function startNav(){
   if(!currentVehicle) return;
+  document.getElementById('driverBody').style.display='none';
+  document.getElementById('driverTopbar').style.display='none';
+  document.getElementById('driverMetrics').style.display='none';
+  document.getElementById('navMap').style.display='block';
+  document.getElementById('navHUD').style.display='block';
+  document.getElementById('btnExitNav').style.display='block';
+  document.getElementById('navProgressBar').style.display='block';
+  document.getElementById('nextStopChip').style.display='block';
 
-  // Hide driver UI, show fullscreen map
-  document.getElementById('driverBody').style.display = 'none';
-  document.getElementById('driverTopbar').style.display = 'none';
-  document.getElementById('navMap').style.display = 'block';
-  document.getElementById('navHUD').style.display = 'block';
-  document.getElementById('btnExitNav').style.display = 'block';
+  const loader=document.getElementById('navLoading');
+  loader.style.display='flex';
+  const route=currentVehicle.route;
+  navWpIdx=0; navAnimStep=0; navRouteCoords=[]; navCoordIdx=0; navCollected=0;
 
-  const loader = document.getElementById('navLoading');
-  loader.style.display = 'flex';
-
-  const route = currentVehicle.route;
-  navWpIdx = 0; navAnimStep = 0; navRouteCoords = [];
-  navCoordIdx = 0;
-
-  if(!navMap) {
-    navMap = L.map('navMap', {zoomControl:true}).setView([route[0].lat, route[0].lng], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>', maxZoom:19
-    }).addTo(navMap);
+  if(!navMap){
+    navMap=L.map('navMap',{zoomControl:true}).setView([route[0].lat,route[0].lng],15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(navMap);
   }
-  // Force Leaflet to recalculate fullscreen size
-  setTimeout(() => navMap.invalidateSize(), 80);
+  setTimeout(()=>navMap.invalidateSize(),80);
 
-  // Fetch ORS real-road route
-  let orsDist = 0, orsDur = 0, orsOk = false;
-  try {
-    const result = await fetchORSRoute(route);
-    navRouteCoords = result.coords;
-    orsDist = result.distance; orsDur = result.duration; orsOk = true;
-    L.polyline(navRouteCoords, {color:currentVehicle.color, weight:6, opacity:.9}).addTo(navMap);
-    document.getElementById('orsChip').style.display = 'block';
-    document.getElementById('orsChip').innerHTML =
+  let orsDist=0, orsDur=0, orsOk=false;
+  try{
+    const result=await fetchORSRoute(route);
+    navRouteCoords=result.coords;
+    orsDist=result.distance; orsDur=result.duration; orsOk=true;
+    L.polyline(navRouteCoords,{color:currentVehicle.color,weight:6,opacity:.9}).addTo(navMap);
+    document.getElementById('orsChip').style.display='block';
+    document.getElementById('orsChip').innerHTML=
       `<span style="color:var(--green);">✓ ORS</span>&nbsp;
        <b style="color:var(--primary);">${orsDist.toFixed(1)} กม.</b>&nbsp;·&nbsp;
        <span style="color:var(--muted);">${fmtDuration(orsDur)}</span>`;
-  } catch(e) {
-    console.warn('ORS fallback:', e.message);
-    navRouteCoords = route.map(p => [p.lat, p.lng]);
-    L.polyline(navRouteCoords, {color:currentVehicle.color, weight:5, dashArray:'8,5', opacity:.75}).addTo(navMap);
-    document.getElementById('orsChip').style.display = 'block';
-    document.getElementById('orsChip').innerHTML =
+  } catch(e){
+    console.warn('ORS fallback:',e.message);
+    navRouteCoords=route.map(p=>[p.lat,p.lng]);
+    L.polyline(navRouteCoords,{color:currentVehicle.color,weight:5,dashArray:'8,5',opacity:.75}).addTo(navMap);
+    document.getElementById('orsChip').style.display='block';
+    document.getElementById('orsChip').innerHTML=
       `<span style="color:var(--gold);">⚠ เส้นตรง</span>&nbsp;~${routeDist(route).toFixed(1)} กม.`;
   }
 
-  // Waypoint markers
-  route.forEach(p => {
-    const isBase = p.isBase, isCrit = p.critical && !isBase;
-    const sz = isBase ? 18 : isCrit ? 12 : 7;
-    const col = isBase ? '#ff4d6d' : isCrit ? '#f5c842' : '#4d6b8a';
-    L.marker([p.lat, p.lng], {icon: L.divIcon({
-      html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${col};border:2px solid white;box-shadow:0 0 ${isBase?14:8}px ${col};"></div>`,
-      className:'', iconAnchor:[sz/2, sz/2]
+  // Waypoint markers with numbers
+  route.forEach((p, i) => {
+    const isBase=p.isBase, isCrit=p.critical&&!isBase;
+    const sz=isBase?18:isCrit?13:8;
+    const col=isBase?'#ff4d6d':isCrit?'#f5c842':'#4d6b8a';
+    const label=isBase?(i===0?'S':'E'):String(i);
+    L.marker([p.lat,p.lng],{icon:L.divIcon({
+      html:`<div style="position:relative;">
+        <div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${col};border:2px solid white;box-shadow:0 0 ${isBase?14:8}px ${col};display:flex;align-items:center;justify-content:center;font-size:${sz<10?'5':'7'}px;font-weight:900;color:${isBase?'white':'rgba(0,0,0,.7)'};">${isCrit?i:''}</div>
+      </div>`,
+      className:'',iconAnchor:[sz/2,sz/2]
     })}).addTo(navMap).bindPopup(`<b>${p.name}</b>${isCrit?'<br><span style="color:#f5c842;font-size:11px;">⭐ จุดสำคัญ</span>':''}`);
   });
 
-  navMap.fitBounds(navRouteCoords, {padding:[60, 60]});
-  loader.style.display = 'none';
+  navMap.fitBounds(navRouteCoords,{padding:[60,60]});
+  loader.style.display='none';
 
-  // Driver marker
-  const carIcon = L.divIcon({
+  const carIcon=L.divIcon({
     html:`<div style="font-size:30px;filter:drop-shadow(0 3px 10px rgba(0,0,0,.7))">${currentVehicle.icon}</div>`,
-    className:'', iconAnchor:[15,15]
+    className:'',iconAnchor:[15,15]
   });
   if(driverMarker) driverMarker.remove();
-  driverMarker = L.marker([navRouteCoords[0][0], navRouteCoords[0][1]], {icon:carIcon}).addTo(navMap);
+  driverMarker=L.marker([navRouteCoords[0][0],navRouteCoords[0][1]],{icon:carIcon}).addTo(navMap);
 
   updateNavDest();
-  RT_STATE[currentVehicle.id].active = true;
+  RT_STATE[currentVehicle.id].active=true;
   if(navInterval) clearInterval(navInterval);
-  navInterval = setInterval(animateNav, 1200);
+  navInterval=setInterval(animateNav,1200);
 }
 
-function exitNav() {
-  if(navInterval) clearInterval(navInterval);
-  navInterval = null;
-  navCoordIdx = 0;
-  if(driverMarker){ driverMarker.remove(); driverMarker = null; }
-  document.getElementById('navMap').style.display = 'none';
-  document.getElementById('navHUD').style.display = 'none';
-  document.getElementById('btnExitNav').style.display = 'none';
-  document.getElementById('orsChip').style.display = 'none';
-  document.getElementById('driverBody').style.display = 'flex';
-  document.getElementById('driverTopbar').style.display = 'flex';
-  RT_STATE[currentVehicle.id].active = false;
-  // Reset start button
-  document.getElementById('btnStart').disabled = false;
-  document.getElementById('btnStart').textContent = '🚀 เริ่มการเดินทาง';
+function updateNavDest(){
+  const route=currentVehicle.route;
+  const nextIdx=Math.min(navWpIdx+1,route.length-1);
+  const dest=route[nextIdx];
+  document.getElementById('destName').textContent=dest?dest.name:'🏁 จบเส้นทาง';
+  document.getElementById('nextStopChip').textContent='🧭 ' + (dest?dest.name:'🏁 จบเส้นทาง');
 }
 
-let navCoordIdx = 0;
-function animateNav() {
-  const route = currentVehicle.route;
-  if(navCoordIdx >= navRouteCoords.length - 1){
+function animateNav(){
+  const route=currentVehicle.route;
+  if(navCoordIdx>=navRouteCoords.length-1){
     clearInterval(navInterval);
-    document.getElementById('destName').textContent = '🎉 ถึงจุดหมายแล้ว!';
-    RT_STATE[currentVehicle.id].active = false;
+    document.getElementById('destName').textContent='🎉 ถึงจุดหมายแล้ว!';
+    document.getElementById('nextStopChip').textContent='🎉 ถึงจุดหมายแล้ว!';
+    document.getElementById('navProgressFill').style.width='100%';
+    RT_STATE[currentVehicle.id].active=false;
     return;
   }
   navCoordIdx++;
-  const [lat, lng] = navRouteCoords[navCoordIdx];
-  driverMarker.setLatLng([lat, lng]);
-  navMap.panTo([lat, lng], {animate:true, duration:1});
+  const [lat,lng]=navRouteCoords[navCoordIdx];
+  driverMarker.setLatLng([lat,lng]);
+  navMap.panTo([lat,lng],{animate:true,duration:1});
 
   // Closest waypoint
-  let closest = 0, closestDist = 9999;
-  route.forEach((p, i) => {
-    const d = Math.abs(p.lat - lat) + Math.abs(p.lng - lng);
-    if(d < closestDist){ closestDist = d; closest = i; }
+  let closest=0,closestDist=9999;
+  route.forEach((p,i)=>{
+    const d=Math.abs(p.lat-lat)+Math.abs(p.lng-lng);
+    if(d<closestDist){closestDist=d;closest=i;}
   });
-  const pct = Math.round((navCoordIdx / navRouteCoords.length) * 100);
-  RT_STATE[currentVehicle.id] = {
-    lat, lng, active:true,
-    wpIdx: closest, total: route.length,
-    stopName: route[closest] ? route[closest].name : '—',
-    pct
-  };
 
-  document.getElementById('speedVal').textContent = Math.floor(20 + Math.random() * 25);
-  document.getElementById('stopIdx').textContent = closest;
-  document.getElementById('destName').textContent =
-    closest < route.length - 1 ? route[Math.min(closest + 1, route.length - 1)].name : '🏁 จบเส้นทาง';
+  const pct=Math.round((navCoordIdx/navRouteCoords.length)*100);
+  document.getElementById('navProgressFill').style.width=pct+'%';
+
+  // Count collected (critical points passed)
+  const passedCrit=route.slice(0,closest+1).filter(p=>p.critical&&!p.isBase).length;
+  navCollected=passedCrit;
+
+  RT_STATE[currentVehicle.id]={lat,lng,active:true,wpIdx:closest,total:route.length,stopName:route[closest]?route[closest].name:'—',pct};
+
+  document.getElementById('speedVal').textContent=Math.floor(20+Math.random()*25);
+  document.getElementById('stopIdx').textContent=closest;
+  document.getElementById('collectedVal').textContent=navCollected;
+  document.getElementById('destName').textContent=closest<route.length-1?route[Math.min(closest+1,route.length-1)].name:'🏁 จบเส้นทาง';
+  document.getElementById('nextStopChip').textContent='🧭 '+(closest<route.length-1?route[Math.min(closest+1,route.length-1)].name:'🏁 จบเส้นทาง');
 }
 
-// ========== MANAGER MAP ==========
-async function initManagerMap() {
-  // Validation
+function exitNav(){
+  if(navInterval) clearInterval(navInterval);
+  navInterval=null; navCoordIdx=0;
+  if(driverMarker){driverMarker.remove();driverMarker=null;}
+  document.getElementById('navMap').style.display='none';
+  document.getElementById('navHUD').style.display='none';
+  document.getElementById('btnExitNav').style.display='none';
+  document.getElementById('orsChip').style.display='none';
+  document.getElementById('nextStopChip').style.display='none';
+  document.getElementById('navProgressBar').style.display='none';
+  document.getElementById('navProgressFill').style.width='0%';
+  document.getElementById('driverBody').style.display='flex';
+  document.getElementById('driverTopbar').style.display='flex';
+  document.getElementById('driverMetrics').style.display='flex';
+  RT_STATE[currentVehicle.id].active=false;
+  document.getElementById('btnStart').disabled=false;
+  document.getElementById('btnStart').textContent='🚀 เริ่มการเดินทาง';
+}
+
+// ============================================================
+// MANAGER MAP
+// ============================================================
+async function initManagerMap(){
   const warns=validateRoutes();
   if(warns.length){
     document.getElementById('warnBox').classList.remove('hidden');
     document.getElementById('warnList').innerHTML=warns.map(w=>`<div class="warn-item">⚠️ ${w}</div>`).join('');
   }
 
-  // Stat cards
-  document.getElementById('totalPts').textContent=VEHICLES.reduce((a,v)=>a+v.route.length-2,0);
-  document.getElementById('critPts').textContent=VEHICLES.reduce((a,v)=>a+v.route.filter(p=>p.critical&&!p.isBase).length,0);
+  // Initial metrics
+  const totalPts=VEHICLES.reduce((a,v)=>a+v.route.length-2,0);
+  const critPts=VEHICLES.reduce((a,v)=>a+v.route.filter(p=>p.critical&&!p.isBase).length,0);
+  document.getElementById('totalPts').textContent=totalPts;
+  document.getElementById('critPts').textContent=critPts;
+  document.getElementById('mgrMetTotal').textContent=totalPts;
+  document.getElementById('mgrMetCrit').textContent=critPts;
 
-  // Vehicle status
+  // Vehicle status cards
   document.getElementById('vStatusCards').innerHTML=VEHICLES.map(v=>`
     <div style="background:var(--bg3);border:1px solid ${v.color}33;border-left:3px solid ${v.color};border-radius:12px;padding:12px;margin-bottom:6px;">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
@@ -1159,36 +1471,32 @@ async function initManagerMap() {
       <div style="font-size:12px;color:var(--muted);">จุด: <b style="color:var(--text);">${v.route.length-2}</b> · ระยะ: <b style="color:${v.color};">${routeDist(v.route).toFixed(1)} กม.</b></div>
     </div>`).join('');
 
-  // Leaflet map
+  // Map init
   managerMap=L.map('managerMap',{zoomControl:true}).setView([14.882,102.018],13);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-    attribution:'© OpenStreetMap',maxZoom:19
-  }).addTo(managerMap);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(managerMap);
   setTimeout(()=>managerMap.invalidateSize(),200);
   setTimeout(()=>managerMap.invalidateSize(),600);
   window.addEventListener('resize',()=>{if(managerMap)managerMap.invalidateSize();});
 
-  // ORS status indicator
   document.getElementById('orsStatusBox').innerHTML=`
     <div class="ors-status" id="orsStatusEl">
       <div class="spinner" style="width:16px;height:16px;border-width:2px;"></div>
-      <span style="color:var(--muted);">กำลังโหลดเส้นทางจริงจาก OpenRouteService...</span>
+      <span style="color:var(--muted);">กำลังโหลดเส้นทางจาก ORS...</span>
     </div>`;
 
-  // Draw waypoint markers first (fast)
-  VEHICLES.forEach(v => {
-    v.route.forEach(p => {
+  // Waypoint markers
+  VEHICLES.forEach(v=>{
+    v.route.forEach(p=>{
       const isBase=p.isBase, isCrit=p.critical&&!isBase;
-      if(!isBase && !isCrit) return; // only draw critical + base on manager for clarity
+      if(!isBase&&!isCrit) return;
       const sz=isBase?18:11; const col=isBase?'#ff4d6d':'#f5c842';
       const m=L.marker([p.lat,p.lng],{icon:L.divIcon({
         html:`<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${col};border:2px solid white;box-shadow:0 0 ${isBase?14:7}px ${col};"></div>`,
         className:'',iconAnchor:[sz/2,sz/2]
       })}).addTo(managerMap)
-        .bindPopup(`<div>
-          <b style="font-size:13px;">${p.name}</b><br>
-          ${isBase?'<span style="color:#ff9aaa;font-weight:700;">🏭 จุดเริ่ม/สิ้นสุด</span>':''}
-          ${isCrit?'<span style="color:#f5c842;font-size:11px;">⭐ จุดสำคัญ</span>':''}
+        .bindPopup(`<div><b style="font-size:13px;">${p.name}</b><br>
+          ${isBase?'<span style="color:#ff9aaa;font-weight:700;">🏭 ฐาน</span>':''}
+          ${isCrit?'<span style="color:#f5c842;font-size:11px;">⭐ สำคัญ</span>':''}
           <br><span style="font-size:10px;color:#6b82a8;font-family:monospace;">${p.lat.toFixed(6)}, ${p.lng.toFixed(6)}</span>
           <br><span class="pill ${v.colorCls}" style="margin-top:6px;display:inline-flex;">${v.plate}</span>
         </div>`);
@@ -1197,8 +1505,9 @@ async function initManagerMap() {
   });
   managerMap.fitBounds([...ROUTE_1_PTS,...ROUTE_2_PTS].map(p=>[p.lat,p.lng]),{padding:[24,24]});
 
-  // Fetch ORS routes async
+  // ORS routes
   const orsResults=[];
+  let totalOrsTime=0;
   for(const v of VEHICLES){
     try{
       const r=await fetchORSRoute(v.route);
@@ -1206,18 +1515,18 @@ async function initManagerMap() {
       line.bringToFront();
       mgrRouteLines.push(line);
       orsResults.push({v,dist:r.distance,dur:r.duration,ok:true});
-    } catch(e) {
+      totalOrsTime+=r.duration;
+    } catch(e){
       console.warn(`ORS for ${v.plate} failed:`,e.message);
-      // Fallback straight lines
       const line=L.polyline(v.route.map(p=>[p.lat,p.lng]),{color:v.color,weight:4,dashArray:'8,5',opacity:.6}).addTo(managerMap);
       mgrRouteLines.push(line);
       orsResults.push({v,dist:routeDist(v.route),dur:null,ok:false});
     }
   }
 
-  // Update distances
+  // Update distances + metrics
   let total=0;
-  orsResults.forEach(r => {
+  orsResults.forEach(r=>{
     const el=document.getElementById(r.v.id===0?'d1val':'d2val');
     const suffix=r.ok?` <span style="font-size:10px;color:#00e676;">✓ ORS</span>`:`<span style="font-size:10px;color:#f5c842;"> ~ประมาณ</span>`;
     el.innerHTML=`${r.dist.toFixed(1)} กม.${suffix}${r.dur?` · ${fmtDuration(r.dur)}`:''}`;
@@ -1225,18 +1534,26 @@ async function initManagerMap() {
   });
   document.getElementById('dtotal').textContent=total.toFixed(1)+' กม.';
 
+  // Update top metrics
+  document.getElementById('mgrMetDist').textContent=total.toFixed(1)+' กม.';
+  document.getElementById('mgrMetDist').classList.add('loaded');
+  if(totalOrsTime>0){
+    document.getElementById('mgrMetTime').textContent=fmtDurationShort(totalOrsTime);
+    document.getElementById('mgrMetTime').classList.add('loaded');
+  }
+  document.getElementById('mgrMetTotal').classList.add('loaded');
+  document.getElementById('mgrMetCrit').classList.add('loaded');
+
   const allOk=orsResults.every(r=>r.ok);
   document.getElementById('orsStatusEl').innerHTML=allOk
-    ?`<span style="color:var(--green);">✅ OpenRouteService — เส้นทางถนนจริง โหลดสำเร็จ</span>`
-    :`<span style="color:var(--gold);">⚠️ ORS บางส่วนใช้เส้นตรงแทน (ตรวจสอบ API Key / quota)</span>`;
+    ?`<span style="color:var(--green);">✅ ORS — เส้นทางถนนจริง โหลดสำเร็จ</span>`
+    :`<span style="color:var(--gold);">⚠️ ORS บางส่วนใช้เส้นตรงแทน</span>`;
 
-  // Real-time vehicle tracking (manager view)
   startManagerRealtime();
 }
 
 function startManagerRealtime(){
-  // Create RT markers for both vehicles
-  VEHICLES.forEach(v => {
+  VEHICLES.forEach(v=>{
     const icon=L.divIcon({
       html:`<div style="position:relative;width:44px;height:44px;">
         <div style="position:absolute;inset:0;border-radius:50%;background:${v.color}25;border:2px solid ${v.color};animation:ripple 2s ease-out infinite;"></div>
@@ -1250,9 +1567,8 @@ function startManagerRealtime(){
       .bindPopup(`<b>${v.icon} ${v.name}</b><br><span class="pill ${v.colorCls}">Real-time</span>`);
   });
 
-  // Poll RT_STATE every 2s and update manager map
   mgrRtInterval=setInterval(()=>{
-    VEHICLES.forEach(v => {
+    VEHICLES.forEach(v=>{
       const st=RT_STATE[v.id];
       if(mgrRtMarkers[v.id]){
         mgrRtMarkers[v.id].setLatLng([st.lat,st.lng]);
@@ -1266,7 +1582,6 @@ function startManagerRealtime(){
             <div style="font-size:10px;font-family:monospace;color:#4d6b8a;margin-top:4px;">${st.lat.toFixed(6)}, ${st.lng.toFixed(6)}</div>
           </div>`);
       }
-      // Update HUD
       const stopEl=document.getElementById('rtStop'+v.id);
       const metaEl=document.getElementById('rtMeta'+v.id);
       const progEl=document.getElementById('rtProg'+v.id);
@@ -1277,12 +1592,13 @@ function startManagerRealtime(){
   },2000);
 }
 
-// ========== SIDEBAR / TABS ==========
+// ============================================================
+// SIDEBAR / TABS
+// ============================================================
 function toggleSidebar(){
   sidebarOpen=!sidebarOpen;
   document.getElementById('sidebar').classList.toggle('open',sidebarOpen);
   document.getElementById('backdrop').classList.toggle('on',sidebarOpen);
-  document.body.style.overflow=sidebarOpen?'hidden':'';
 }
 function switchTab(t){
   ['t1','t2','t3'].forEach(id=>{
@@ -1291,7 +1607,9 @@ function switchTab(t){
   });
 }
 
-// ========== ROUTE DETAIL ==========
+// ============================================================
+// ROUTE DETAIL (sidebar T3)
+// ============================================================
 function showRouteDetail(){
   const sel=document.getElementById('routeDrop').value;
   const card=document.getElementById('routeDetailCard');
@@ -1301,22 +1619,24 @@ function showRouteDetail(){
   card.innerHTML=`
     <div style="background:var(--bg3);border-radius:10px;padding:12px;margin-top:8px;">
       <div class="pill ${v.colorCls}" style="margin-bottom:8px;">${v.name}</div>
-      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${v.route.length-2} จุด · ${routeDist(v.route).toFixed(1)} กม. (ประมาณ)</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">${v.route.length-2} จุด · ${routeDist(v.route).toFixed(1)} กม.</div>
       <div class="section-label">⭐ จุดสำคัญ ${crit.length} จุด</div>
       <div class="crit-list" style="margin-top:6px;">${crit.map((p,i)=>`
         <div class="crit-item">
           <span class="crit-num">${i+1}</span>
           <span class="crit-name">${p.name}</span>
-          <span class="crit-coord">${p.lat.toFixed(4)}</span>
+          <span class="crit-coord">${p.lat.toFixed(4)}, ${p.lng.toFixed(4)}</span>
         </div>`).join('')}
       </div>
     </div>`;
   if(managerMap) managerMap.fitBounds(v.route.map(p=>[p.lat,p.lng]),{padding:[30,30]});
 }
 
-// ========== HISTORY ==========
+// ============================================================
+// HISTORY
+// ============================================================
 function generateHistory(){
-  const db={}, today=new Date();
+  const db={},today=new Date();
   VEHICLES.forEach(v=>{
     db[v.id]={};
     for(let d=0;d<7;d++){
@@ -1360,7 +1680,6 @@ function get7Days(){
   }
   return days;
 }
-
 function onHistChange(){
   const sel=document.getElementById('histDrop').value;
   document.getElementById('histDetail').classList.add('hidden');
@@ -1389,7 +1708,6 @@ function renderHistDetail(){
   el.classList.remove('hidden');
   el.style.display='flex';
 
-  // Build inner
   const missedHtml=rec.missedStops.length?`
     <div class="missed-box">
       <div class="missed-title">⚠️ จุดที่ไม่ผ่าน ${rec.missedStops.length} จุด</div>
@@ -1399,7 +1717,7 @@ function renderHistDetail(){
             <div class="missed-coord">${s.requiredLat.toFixed(5)}, ${s.requiredLng.toFixed(5)}</div></div>
           <span class="missed-tag">MISSED</span>
         </div>`).join('')}
-    </div>`:'';
+    </div>`:'' ;
 
   const stopsHtml=`<div class="hist-stop-list">${rec.stops.map((s,i)=>{
     const col=s.visited?'#00e676':'#ff4d6d';
@@ -1407,9 +1725,8 @@ function renderHistDetail(){
       <div class="hs-dot-wrap"><div class="hs-dot" style="background:${col};box-shadow:0 0 6px ${col};"></div>${i<rec.stops.length-1?'<div class="hs-line"></div>':''}</div>
       <div class="hs-content"><div class="hs-name" style="color:${s.visited?'inherit':col};">${s.name}${s.visited?'':' <span style="font-size:10px;background:rgba(255,77,109,.15);padding:1px 6px;border-radius:4px;">❌</span>'}</div>
         <div class="hs-meta"><span>🕐 ${s.arrive}</span>${s.depart!=='—'?`<span>🚀 ${s.depart}</span>`:''}<span>⏱ ${s.duration}</span></div>
-      </div></div>`}).join('')}</div>`;
+      </div></div>`;}).join('')}</div>`;
 
-  // Backup log 7 days
   const bkRows=[];
   get7Days().forEach(d=>{
     const r=HIST_DB[v.id]?.[d.key];
@@ -1480,6 +1797,13 @@ function backToRealtime(){
   document.getElementById('btnBackRt').style.display='none';
   if(managerMap) managerMap.invalidateSize();
 }
+
+// ============================================================
+// KEYFRAME injection
+// ============================================================
+const style=document.createElement('style');
+style.textContent='@keyframes pulse2{0%{transform:scale(1);opacity:1}100%{transform:scale(2.5);opacity:0}}@keyframes ripple{0%{transform:scale(1);opacity:.8}100%{transform:scale(3);opacity:0}}';
+document.head.appendChild(style);
 </script>
 </body>
 </html>
